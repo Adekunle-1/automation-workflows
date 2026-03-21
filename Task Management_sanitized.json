@@ -1,0 +1,3016 @@
+{
+  "name": "Task Management",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_1__",
+      "name": "Webhook - Process Updates",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        496
+      ],
+      "webhookId": "__WEBHOOK_1__"
+    },
+    {
+      "parameters": {
+        "path": "get",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_2__",
+      "name": "Webhook - Update table_1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        512
+      ],
+      "webhookId": "__WEBHOOK_2__"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Update table_2 code - Handle new deadlines + USE UUID for Google Sheets\nconst webhookNode = $('Webhook - Process Updates').first().json;\n\nlet webhookBody = webhookNode.body || webhookNode.query || webhookNode;\n\nif (!webhookBody || Object.keys(webhookBody).length === 0) {\n    console.log(\"\u274c No webhook data received, stopping execution.\");\n    return [];\n}\n\n// Extract parameters safely\nconst taskUUID = webhookBody.task_UUID || webhookBody.UUID || null;\nconst token = webhookBody.token || webhookBody.update_token || null;\nconst newStatus = webhookBody.status || null;\nconst newComment = webhookBody.comment || '';\nconst dateCompleted = webhookBody.date_completed || null;\nconst batchId = webhookBody.batch_id || webhookBody.email_batch_id || null;\nconst requiresDeadline = webhookBody.requires_deadline === 'true';\nconst newDeadline = webhookBody.new_deadline || null;\n\nconsole.log(\"\ud83d\udd25 Incoming webhook data:\", webhookBody);\nconsole.log(`Deadline requirements - requires: ${requiresDeadline}, new: ${newDeadline}`);\n\n// Validate required fields\nif (!taskUUID || !token) {\n    console.log(\"\u274c Missing task_id or token:\", { taskId, token });\n    return [];\n}\n\n// Determine final date completed\nlet finalDateCompleted = null;\nif (newStatus === 'Completed') {\n    const today = new Date();\n    const allowedDates = [];\n    for (let i = 0; i < 4; i++) {\n        const d = new Date(today);\n        d.setDate(today.getDate() - i);\n        allowedDates.push(d.toISOString().split('T')[0]);\n    }\n\n    if (dateCompleted && allowedDates.includes(dateCompleted)) {\n        finalDateCompleted = dateCompleted;\n    } else {\n        finalDateCompleted = allowedDates[0];\n    }\n}\n\n// Prepare update table_3 - USE UUID INSTEAD OF NUMERIC ID\nconst updatePayload = {\n    UUID: taskUUID,\n    update_token: token,\n    status: newStatus,\n    comment: newComment,\n    date_completed: finalDateCompleted,\n    batch_id: batchId,\n    success: true,\n    requires_validation: true,\n    processed_at: new Date().toISOString(),\n    new_deadline: newDeadline\n};\n\nconsole.log('\u2705 Prepared task update table_3:', updatePayload);\n\nreturn [{\n    json: updatePayload\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        496
+      ],
+      "id": "__NODE_3__",
+      "name": "Update table_2 code"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Task update table_4 - NOW WITH SIMPLIFIED TOKEN VALIDATION\nconst tokenCheck = $('Validate Token Simple').first().json; // \u2190 CHANGED: New node name\nconst webhookData = $('Webhook - Update table_1').first().json.query;\n\n// \u2705 CHECK IF TOKEN IS INVALID - SHOW ERROR PAGE\nif (!tokenCheck.is_valid_token) {\n  const errorMessage = tokenCheck.validation_message || 'Invalid or expired link';\n  \n  const errorHtml = `\n<!DOCTYPE html>\n<html>\n<head>\n    <title>Link Invalid</title>\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <style>\n        body { \n            font-family: sans-serif; \n            padding: 20px; \n            background-color: #f8d7da; \n            text-align: center; \n        }\n        .container { \n            max-width: 600px; \n            margin: auto; \n            background: white; \n            padding: 50px; \n            border-radius: 8px; \n            box-shadow: 0 4px 6px rgba(0,0,0,0.1); \n            border-left: 6px solid #e74c3c;\n        }\n        h1 { \n            color: #e74c3c; \n            margin-bottom: 20px;\n        }\n        p { \n            color: #333; \n            font-size: 16px;\n            line-height: 1.6;\n        }\n        .error-icon {\n            font-size: 64px;\n            margin-bottom: 20px;\n        }\n        .reason {\n            background: #fff3cd;\n            padding: 15px;\n            border-radius: 5px;\n            margin-top: 20px;\n            border-left: 4px solid #ffc107;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"error-icon\">\u274c</div>\n        <h1>This Link Is No Longer Valid</h1>\n        \n        <div class=\"reason\">\n            <h3 style=\"margin-top: 0; color: #856404;\">What happened?</h3>\n            <ul style=\"text-align: left; color: #856404;\">\n                <li>A new email with updated links has been sent</li>\n                <li>This link has been replaced by a newer one</li>\n            </ul>\n        </div>\n        \n        <p style=\"margin-top: 30px;\">\n            Please check your email fcolumn_1strong>latest task update table_5</strong>.\n        </p>\n    </div>\n</body>\n</html>`;\n\n  console.log(`\u274c Token validation failed: ${errorMessage}`);\n  return [{ json: { html_content: errorHtml, success: false, error: errorMessage } }];\n}\n\n// \u2705 TOKEN IS VALID - PROCEED WITH FORM\nconsole.log('\u2705 Token validated successfully');\n\n// Get deadline from table_6 parameters\nconst currentDeadline = webhookData.current_deadline;\nconst dateGiven = webhookData.date_given;\n\n// Determine if this task needs a deadline\nconst hasExistingDeadline = currentDeadline && \n                           currentDeadline !== 'Not specified' && \n                           currentDeadline !== 'null' && \n                           currentDeadline !== 'undefined' &&\n                           currentDeadline !== '';\n\n// \u2705 Calculate default deadline: 7 days from table_7 given\nlet defaultDeadline = '';\nif (!hasExistingDeadline && dateGiven) {\n    const givenDate = new Date(dateGiven);\n    givenDate.setDate(givenDate.getDate() + 7);\n    defaultDeadline = givenDate.toISOString().split('T')[0];\n}\n\nconsole.log(`Deadline from table_6: \"${currentDeadline}\", Has deadline: ${hasExistingDeadline}, Default deadline: ${defaultDeadline}`);\n\nconst taskDescription = webhookData.task_description;\nconst currentStatus = webhookData.current_status;\nconst recipientEmail = webhookData.recipient_email;\nconst POST_WEBHOOK_URL = '[URL]';\n\nconst htmlForm = `\n<!DOCTYPE html>\n<html>\n<head>\n    <title>Update table_8</title>\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <style>\n        body { font-family: sans-serif; padding: 20px; background-color: #f4f7f9; }\n        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n        h1 { color: #333; }\n        .task-info { background: #eef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }\n        label { display: block; margin-top: 15px; font-weight: bold; }\n        select, textarea, input[type=\"date\"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; }\n        button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; }\n        .date-completed-section { display: none; margin-top: 15px; padding: 15px; background-color: #e8f5e8; border-radius: 5px; }\n        .deadline-required-section { display: ${hasExistingDeadline ? 'none' : 'block'}; margin-top: 15px; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107; }\n        .completed-note { color: #27ae60; font-size: 14px; margin-top: 5px; }\n        .deadline-note { color: #856404; font-size: 14px; margin-top: 5px; }\n        .required-field::after { content: \" *\"; color: #e74c3c; }\n    </style>\n    <script>\n        function toggleDateCompleted() {\n            const statusSelect = document.getElementById('status');\n            const dateSection = document.getElementById('dateCompletedSection');\n            const dateInput = document.getElementById('dateCompleted');\n            if (statusSelect.value === 'Completed') {\n                dateSection.style.display = 'block';\n                const today = new Date();\n                const allowedDates = [];\n                for (let i = 0; i < 4; i++) {\n                    const d = new Date(today);\n                    d.setDate(today.getDate() - i);\n                    allowedDates.push(d.toISOString().split('T')[0]);\n                }\n                dateInput.value = allowedDates[0];\n                dateInput.required = true;\n                dateInput.setAttribute(\"min\", allowedDates[3]);\n                dateInput.setAttribute(\"max\", allowedDates[0]);\n            } else {\n                dateSection.style.display = 'none';\n                dateInput.value = '';\n                dateInput.required = false;\n            }\n        }\n        \n        function validateDeadline() {\n            const deadlineRequired = ${!hasExistingDeadline};\n            if (deadlineRequired) {\n                const deadlineInput = document.getElementById('newDeadline');\n                if (!deadlineInput.value) {\n                    alert('Please set a deadline for this task. This task currently has no deadline.');\n                    deadlineInput.focus();\n                    return false;\n                }\n                \n                const selectedDate = new Date(deadlineInput.value);\n                const today = new Date();\n                const daysDiff = (selectedDate - today) / (1000 * 60 * 60 * 24);\n                \n                if (daysDiff > 30) {\n                    if (!confirm('This deadline is more than 30 days away. Are you sure you need this much time? Note that this is subject to approval')) {\n                        deadlineInput.focus();\n                        return false;\n                    }\n                }\n            }\n            return true;\n        }\n        \n        function validateForm() {\n            const commentField = document.getElementById('comment');\n            if (!commentField.value.trim()) {\n                alert('Please provide a Task Update table_9 submitting.');\n                commentField.focus();\n                return false;\n            }\n            \n            return validateDeadline();\n        }\n        \n        window.onload = function() {\n            toggleDateCompleted();\n            \n            const deadlineRequired = ${!hasExistingDeadline};\n            if (deadlineRequired) {\n                const today = new Date().toISOString().split('T')[0];\n                const deadlineInput = document.getElementById('newDeadline');\n                if (deadlineInput) {\n                    deadlineInput.setAttribute('min', today);\n                }\n            }\n        };\n    </script>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Update table_8 Status</h1>\n        <div class=\"task-info\">\n            <strong>Task:</strong> ${taskDescription}<br>\n            <strong>Current Status:</strong> ${currentStatus}<br>\n        </div>\n        <form action=\"${POST_WEBHOOK_URL}\" method=\"POST\" onsubmit=\"return validateForm()\">\n            <input type=\"hidden\" name=\"recipient_email\" value=\"${recipientEmail}\">\n            <input type=\"hidden\" name=\"batch_id\" value=\"${webhookData.batch_id}\">\n            <input type=\"hidden\" name=\"task_UUID\" value=\"${webhookData.task_UUID}\">\n            <input type=\"hidden\" name=\"token\" value=\"${webhookData.token}\">\n            <input type=\"hidden\" name=\"requires_deadline\" value=\"${!hasExistingDeadline}\">\n            \n            <label for=\"status\" class=\"required-field\">Status:</label>\n            <select name=\"status\" id=\"status\" onchange=\"toggleDateCompleted()\" required>\n                <option value=\"Not started\" ${currentStatus === 'Not started' ? 'selected' : ''}>Not Started</option>\n                <option value=\"In progress\" ${currentStatus === 'In progress' ? 'selected' : ''}>In Progress</option>\n                <option value=\"Completed\" ${currentStatus === 'Completed' ? 'selected' : ''}>Completed</option>\n            </select>\n            \n            <div id=\"deadlineRequiredSection\" class=\"deadline-required-section\">\n                <label for=\"newDeadline\" class=\"required-field\">Set Deadline (Required):</label>\n                <input type=\"date\" name=\"new_deadline\" id=\"newDeadline\" value=\"${defaultDeadline}\" ${!hasExistingDeadline ? 'required' : ''}>\n                <div class=\"deadline-note\">\n                    ${defaultDeadline ? `Task auto-column_2strong>${defaultDeadline}</strong> (7 days from table_10 date). Edit to change if needed.` : 'This task currently has no deadline. Please set a realistic deadline.'}\n                </div>\n            </div>\n            \n            <div id=\"dateCompletedSection\" class=\"date-completed-section\">\n                <label for=\"dateCompleted\">Date Completed:</label>\n                <input type=\"date\" name=\"date_completed\" id=\"dateCompleted\">\n                <div class=\"completed-note\">You can only select from table_11 and the last 3 days.</div>\n            </div>\n            \n            <label for=\"comment\" class=\"required-field\">Task Update:</label>\n            <textarea name=\"comment\" id=\"comment\" rows=\"4\" placeholder=\"Type your task update/comment here...\" required></textarea>\n            \n            <button type=\"submit\">Submit Update</button>\n        </form>\n    </div>\n</body>\n</html>\n`;\n\nreturn [{ json: { html_content: htmlForm, success: true, requires_deadline: !hasExistingDeadline } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        512
+      ],
+      "id": "__NODE_4__",
+      "name": "Task update table_4"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.html_content}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -608,
+        512
+      ],
+      "id": "__NODE_5__",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<!DOCTYPE html>\n<html>\n<head>\n    <title>Update table_12</title>\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <style>\n        body { font-family: sans-serif; padding: 20px; background-color: #e8f4f8; text-align: center; }\n        .container { max-width: 600px; margin: auto; background: white; padding: 50px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n        h1 { color: #27ae60; }\n        p { color: #333; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>\u2705 Task Updated Successfully!</h1>\n        <p>Thank you for your update. Your task status has been logged in the system.</p>\n    </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        496
+      ],
+      "id": "__NODE_6__",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        832
+      ],
+      "id": "__NODE_7__",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 130952309,
+          "mode": "list",
+          "cachedResultName": "Error Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $now }}",
+            "Workflow": "={{ $json.workflow.name }}",
+            "URL": "={{ $json.execution.url }}",
+            "Message": "={{ $json.execution.error.message }}",
+            "Staus": "new"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Workflow",
+              "displayName": "Workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Staus",
+              "displayName": "Staus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -880,
+        896
+      ],
+      "id": "__NODE_8__",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "Orange Groups",
+        "toEmail": "=[EMAIL]",
+        "subject": "=Error In {{ $json.workflow.name }}",
+        "emailFormat": "text",
+        "text": "=Heyy!! There was an error in this workflow {{ $json.execution.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -880,
+        752
+      ],
+      "id": "__NODE_9__",
+      "name": "Send email1",
+      "webhookId": "__WEBHOOK_3__",
+      "retryOnFail": true,
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "UUID",
+              "lookupValue": "={{ $json.query.task_UUID }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1296,
+        512
+      ],
+      "id": "__NODE_10__",
+      "name": "Lookup Task",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate Token Simple - Just check if token + batch_id match (no complex expiration)\nconst sheetData = $('Lookup Task').first()?.json;\nconst webhookData = $('Webhook - Update table_1').first().json.query;\n\nconsole.log('=== TOKEN VALIDATION DEBUG ===');\nconsole.log('Webhook data received:', {\n  task_id: webhookData.task_id,\n  token: webhookData.token?.substring(0, 15) + '...',\n  batch_id: webhookData.batch_id\n});\n\n// Check if task was found in sheet\nif (!sheetData) {\n  console.log('\u274c Task not found in sheet');\n  return [{\n    json: {\n      is_valid_token: false,\n      validation_message: 'Task not found',\n      last_email_batch_id: null\n    }\n  }];\n}\n\n// Log ALL sheet data to see column names\nconsole.log('Sheet data columns:', Object.keys(sheetData));\nconsole.log('Sheet data values:', {\n  UUID: sheetData.UUID,\n  Update_token: sheetData.Update_token?.substring(0, 15) + '...',\n  update_token: sheetData.update_token?.substring(0, 15) + '...',\n  last_email_batch_id: sheetData.last_email_batch_id,\n  all_fields: sheetData\n});\n\n// Get the stored token (check both possible column names)\nconst storedToken = sheetData.Update_token || sheetData.update_token || sheetData['Update_token'];\nconst storedBatchId = sheetData.last_email_batch_id;\n\nconsole.log('Comparison:', {\n  storedToken: storedToken?.substring(0, 15) + '...',\n  receivedToken: webhookData.token?.substring(0, 15) + '...',\n  storedBatchId: storedBatchId,\n  receivedBatchId: webhookData.batch_id\n});\n\n// Simple validation: token + batch_id must match\nconst tokenMatches = storedToken === webhookData.token;\nconst batchIdMatches = storedBatchId === webhookData.batch_id;\nconst isValidToken = tokenMatches && batchIdMatches;\n\n// Determine validation message\nlet validationMessage = 'Success';\nif (!isValidToken) {\n  if (!storedToken) {\n    validationMessage = 'No token found in database - email may not have been sent yet';\n  } else if (!storedBatchId) {\n    validationMessage = 'No batch ID found - email may not have been sent yet';\n  } else if (!batchIdMatches) {\n    validationMessage = 'Link expired - new email sent';\n  } else if (!tokenMatches) {\n    validationMessage = 'Invalid token';\n  } else {\n    validationMessage = 'Validation failed';\n  }\n}\n\nconsole.log('Validation result:', {\n  tokenMatches,\n  batchIdMatches,\n  isValidToken,\n  message: validationMessage\n});\n\nreturn [{\n  json: {\n    id: sheetData.UUID,\n    is_valid_token: isValidToken,\n    last_email_batch_id: storedBatchId,\n    validation_message: validationMessage\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        512
+      ],
+      "id": "__NODE_11__",
+      "name": "Validate Token Simple"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "deadline": "={{ $json.new_deadline}}",
+            "status": "={{$json.status}}",
+            "comment": "={{$json.comment}}",
+            "date_completed": "={{$json.date_completed}}",
+            "updated_at": "={{ new Date().toLocaleString() }}",
+            "UUID": "={{$json.UUID}}"
+          },
+          "matchingColumns": [
+            "UUID"
+          ],
+          "schema": [
+            {
+              "id": "UUID",
+              "displayName": "UUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "action_owner",
+              "displayName": "action_owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "recipient_name",
+              "displayName": "recipient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "recipient_email",
+              "displayName": "recipient_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "action_item",
+              "displayName": "action_item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meeting_contexts",
+              "displayName": "meeting_contexts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "comment",
+              "displayName": "comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Update_token",
+              "displayName": "Update_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_email_batch_id",
+              "displayName": "last_email_batch_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        288,
+        496
+      ],
+      "id": "__NODE_12__",
+      "name": "Update table_13 item",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1344,
+        48
+      ],
+      "id": "__NODE_13__",
+      "name": "Get Tasks for Email",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter and Score Tasks - Replaces Postgres SQL filtering logic\nconst items = $input.all();\nconst currentDate = new Date();\ncurrentDate.setHours(0, 0, 0, 0);\n\nconsole.log(`Received ${items.length} total tasks from table_2`);\n\nconst filteredItems = items\n  .map(item => {\n    const task = item.json;\n    \n    // Skip completed tasks\n    if (task.status === 'Completed') {\n      return null;\n    }\n    \n    // Skip if status is not \"Not started\" or \"In progress\"\n    if (task.status !== 'Not started' && task.status !== 'In progress') {\n      return null;\n    }\n    \n    // Parse and validate task date\n    let taskDate = null;\n    if (task.date) {\n      taskDate = new Date(task.date);\n      taskDate.setHours(0, 0, 0, 0);\n      \n      // Only include 2026 tasks\n      if (taskDate.getFullYear() !== 2026) {\n        return null;\n      }\n    } else {\n      // Skip tasks without a date\n      return null;\n    }\n    \n    // Parse deadline\n    let deadline = null;\n    if (task.deadline && \n        task.deadline !== 'Not specified' && \n        task.deadline !== 'null' && \n        task.deadline !== 'undefined' &&\n        task.deadline !== '') {\n      deadline = new Date(task.deadline);\n      deadline.setHours(0, 0, 0, 0);\n    }\n    \n    // Skip tasks with deadline more than 1 month in the past\n    const oneMonthAgo = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);\n    if (deadline && deadline < oneMonthAgo) {\n      return null; // Expired tasks\n    }\n    \n    // Calculate priority score\n    let priorityScore = 0;\n    let priorityLabel = 'Upcoming';\n    \n    if (!deadline) {\n      priorityScore = 0;\n      priorityLabel = 'No Deadline';\n    } else {\n      const diffTime = deadline - currentDate;\n      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));\n      \n      if (deadline < oneMonthAgo) {\n        // Very old - should have been filtered above\n        priorityLabel = 'Expired';\n        priorityScore = -1;\n      } else if (deadline < currentDate) {\n        // Overdue - higher priority score (days overdue)\n        priorityLabel = 'Overdue';\n        priorityScore = Math.ceil((currentDate - deadline) / (1000 * 60 * 60 * 24));\n      } else if (diffDays <= 7) {\n        // Due soon - medium priority\n        priorityLabel = 'Due Soon';\n        priorityScore = 0;\n      } else {\n        // Future deadline - lower priority (days until due)\n        priorityLabel = 'Upcoming';\n        priorityScore = diffDays;\n      }\n    }\n    \n    // Only include tasks with priority_score >= 0\n    if (priorityScore < 0) {\n      return null;\n    }\n    \n    return {\n      json: {\n        ...task,\n        priority_score: priorityScore,\n        priority_label: priorityLabel\n      }\n    };\n  })\n  .filter(item => item !== null);\n\n// Sort by priority score DESC (most urgent first), then deadline ASC (earliest first)\nfilteredItems.sort((a, b) => {\n  // First sort by priority score (higher = more urgent for overdue, lower = more urgent for upcoming)\n  // For overdue tasks: higher score = more days overdue = more urgent\n  // For upcoming tasks: lower score = fewer days until due = more urgent\n  \n  const scoreA = a.json.priority_score;\n  const scoreB = b.json.priority_score;\n  const labelA = a.json.priority_label;\n  const labelB = b.json.priority_label;\n  \n  // Overdue tasks always come first\n  if (labelA === 'Overdue' && labelB !== 'Overdue') return -1;\n  if (labelA !== 'Overdue' && labelB === 'Overdue') return 1;\n  \n  // Both overdue: sort by days overdue (higher score = more overdue = first)\n  if (labelA === 'Overdue' && labelB === 'Overdue') {\n    return scoreB - scoreA;\n  }\n  \n  // Due soon tasks come before upcoming tasks\n  if (labelA === 'Due Soon' && labelB === 'Upcoming') return -1;\n  if (labelA === 'Upcoming' && labelB === 'Due Soon') return 1;\n  \n  // No deadline tasks come last\n  if (labelA === 'No Deadline' && labelB !== 'No Deadline') return 1;\n  if (labelA !== 'No Deadline' && labelB === 'No Deadline') return -1;\n  \n  // Within same category, sort by actual deadline date\n  const deadlineA = a.json.deadline ? new Date(a.json.deadline) : new Date('9999-12-31');\n  const deadlineB = b.json.deadline ? new Date(b.json.deadline) : new Date('9999-12-31');\n  \n  return deadlineA - deadlineB;\n});\n\nconsole.log(`Filtered to ${filteredItems.length} tasks for email generation`);\nconsole.log(`Priority breakdown:`, {\n  overdue: filteredItems.filter(i => i.json.priority_label === 'Overdue').length,\n  due_soon: filteredItems.filter(i => i.json.priority_label === 'Due Soon').length,\n  upcoming: filteredItems.filter(i => i.json.priority_label === 'Upcoming').length,\n  no_deadline: filteredItems.filter(i => i.json.priority_label === 'No Deadline').length\n});\n\nreturn filteredItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        48
+      ],
+      "id": "__NODE_14__",
+      "name": "Filter and Score Tasks"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "UUID": "={{ $json.UUID }}",
+            "Update_token": "REDACTED",
+            "last_email_batch_id": "={{ $json.batch_id }}"
+          },
+          "matchingColumns": [
+            "UUID"
+          ],
+          "schema": [
+            {
+              "id": "UUID",
+              "displayName": "UUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "action_owner",
+              "displayName": "action_owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "recipient_name",
+              "displayName": "recipient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "recipient_email",
+              "displayName": "recipient_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "action_item",
+              "displayName": "action_item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "meeting_contexts",
+              "displayName": "meeting_contexts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "comment",
+              "displayName": "comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Update_token",
+              "displayName": "Update_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_email_batch_id",
+              "displayName": "last_email_batch_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        48
+      ],
+      "id": "__NODE_15__",
+      "name": "Update table_14",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Email Generation Node - Core Logic + Token Security + Date Formatting + Auto Grouping\nconst inputData = $input.all();\nconsole.log(`Received ${inputData.length} raw task records for email generation`);\n\n// \u2705 Step 1: Group flat tasks by recipient_email\nconst groupedByEmail = {};\n\nfor (const item of inputData) {\n    const task = item.json || item;\n    const email = task.recipient_email?.trim()?.toLowerCase();\n    if (!email) continue;\n\n    if (!groupedByEmail[email]) {\n        groupedByEmail[email] = {\n            recipient_name: task.recipient_name || \"Unknown Recipient\",\n            recipient_email: task.recipient_email,\n            department: task.department || null,\n            tasks: [],\n        };\n    }\n    groupedByEmail[email].tasks.push(task);\n}\n\n// Convert grouping object to an array (the structure expected by the original script)\nconst groupedTasks = Object.values(groupedByEmail).map(group => ({\n    json: {\n        recipient_name: group.recipient_name,\n        recipient_email: group.recipient_email,\n        department: group.department,\n        tasks: group.tasks,\n        task_count: group.tasks.length,\n        status_summary: {\n            not_started: group.tasks.filter(t => (t.status || '').toLowerCase().includes('not started')).length,\n            in_progress: group.tasks.filter(t => (t.status || '').toLowerCase().includes('in progress')).length,\n            completed: group.tasks.filter(t => (t.status || '').toLowerCase().includes('completed')).length\n        }\n    }\n}));\n\n\n// \u2705 Secure crypto definition (works in n8n sandbox)\nconst crypto = globalThis.crypto || undefined;\n\n// \u2705 Cryptographically secure token generator\nfunction generateSecureToken() {\n    try {\n        if (crypto && crypto.getRandomValues) {\n            const array = new Uint8Array(32);\n            crypto.getRandomValues(array);\n            return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');\n        } else {\n            // Fallback: Math.random (less secure, but sandbox-safe)\n            return Array.from({ length: 32 }, () =>\n                Math.floor(Math.random() * 256).toString(16).padStart(2, '0')\n            ).join('');\n        }\n    } catch (err) {\n        console.warn(\"Crypto unavailable \u2013 using fallback RNG:\", err);\n        return Array.from({ length: 32 }, () =>\n            Math.floor(Math.random() * 256).toString(16).padStart(2, '0')\n        ).join('');\n    }\n}\n\n// Generate unique batch ID for this email run\nconst emailBatchId = `batch_${Date.now()}_${generateSecureToken().slice(0, 8)}`;\nconsole.log(`Email batch ID: ${emailBatchId}`);\n\nconst BASE_WEBHOOK_URL = '[URL]';\n\nfunction generateQueryParams(params) {\n    const paramStrings = [];\n    for (const [key, value] of Object.entries(params)) {\n        if (value !== null && value !== undefined) {\n            paramStrings.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));\n        }\n    }\n    return paramStrings.join('&');\n}\n\nfunction generateUpdateLink(task, recipientEmail, token) {\n    const params = {\n        task_id: task.id,\n        task_UUID: task.UUID,\n        token: token,\n        recipient_email: recipientEmail,\n        batch_id: emailBatchId,\n        task_description: task.action_item || task.task_name || task.name || '',\n        current_status: task.status || '',\n        current_deadline: task.deadline || 'Not specified',\n        date_given: task.date ? new Date(task.date).toISOString().slice(0, 10) : ''\n    };\n    return `${BASE_WEBHOOK_URL}?${generateQueryParams(params)}`;\n}\n\nfunction getStatusColor(status) {\n    if (!status) return '#95a5a6';\n    const lowerStatus = (status || '').toLowerCase();\n    if (lowerStatus.includes('not started')) return '#e74c3c';\n    if (lowerStatus.includes('in progress')) return '#f39c12';\n    if (lowerStatus.includes('completed')) return '#27ae60';\n    return '#95a5a6';\n}\n\n// Helper function to format deadline as YYYY-MM-DD\nfunction formatDeadlineForEmail(deadline) {\n    if (!deadline) return 'Not specified';\n    \n    // If it's already in YYYY-MM-DD format, return as is\n    if (typeof deadline === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(deadline)) {\n        return deadline;\n    }\n    \n    // If it's a full ISO date, extract just the date part\n    if (typeof deadline === 'string' && deadline.includes('T')) {\n        return deadline.split('T')[0];\n    }\n    \n    return deadline;\n}\n\n// Helper function to calculate days until/past deadline\nfunction getDeadlineStatus(deadline) {\n    if (!deadline) return { label: null, daysCount: null };\n    \n    let dateString = deadline;\n    if (deadline.includes('T')) {\n        dateString = deadline.split('T')[0];\n    }\n    \n    const deadlineDate = new Date(dateString + 'T00:00:00Z');\n    const today = new Date();\n    today.setHours(0, 0, 0, 0);\n    \n    const diffTime = deadlineDate - today;\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));\n    \n    if (diffDays < 0) {\n        return { label: 'Overdue', daysCount: Math.abs(diffDays) };\n    } else if (diffDays <= 7) {\n        return { label: 'Due Soon', daysCount: diffDays };\n    }\n    \n    return { label: null, daysCount: null };\n}\n\n// Helper function to generate priority badge only for urgent tasks\nfunction getPriorityBadge(deadlineStatus) {\n    if (!deadlineStatus.label) return '';\n    \n    if (deadlineStatus.label === 'Overdue') {\n        return `<span style=\"background: #e74c3c; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px;\">\ud83d\udea8 OVERDUE (${deadlineStatus.daysCount} day${deadlineStatus.daysCount > 1 ? 's' : ''})</span>`;\n    } else if (deadlineStatus.label === 'Due Soon') {\n        return `<span style=\"background: #f39c12; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px;\">\u26a0\ufe0f DUE IN ${deadlineStatus.daysCount} DAY${deadlineStatus.daysCount > 1 ? 'S' : ''}</span>`;\n    }\n    \n    return '';\n}\n\nconst emailContent = groupedTasks.map(group => {\n    const recipient = group.json;\n    const tasks = recipient.tasks || [];\n    \n    console.log(`Processing ${recipient.recipient_name} with ${tasks.length} tasks`);\n    \n    const tasksWithTokens = tasks.map(task => {\n        const token = generateSecureToken();\n        const deadlineStatus = getDeadlineStatus(task.deadline);\n        \n        return {\n            ...task,\n            update_token: token,\n            update_link: generateUpdateLink(task, recipient.recipient_email, token),\n            email_batch_id: emailBatchId,\n            deadline_status: deadlineStatus\n        };\n    });\n    \n    const taskListHtml = tasksWithTokens.map((task, index) => {\n        const priorityBadge = getPriorityBadge(task.deadline_status);\n        const formattedDeadline = formatDeadlineForEmail(task.deadline);\n        \n        return `\n        <div style=\"border: 1px solid #e0e0e0; padding: 20px; margin: 15px 0; border-radius: 10px; background: #fafafa;\">\n            <h3 style=\"margin: 0 0 12px 0; color: #2c3e50; font-size: 18px;\">\n                ${index + 1}. ${task.action_item || 'Unknown Task'}${priorityBadge}\n            </h3>\n            \n            <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;\">\n                <div>\n                    <strong>Status:</strong><br>\n                    <span style=\"color: ${getStatusColor(task.status)}; font-weight: bold;\">\n                        ${task.status || 'Not started'}\n                    </span>\n                </div>\n                <div>\n                    <strong>Deadline:</strong><br>\n                    ${formattedDeadline}\n                </div>\n                <div>\n                    <strong>Source:</strong><br>\n                    ${task.source || 'WhatsApp'}\n                </div>\n            </div>\n            \n            <div style=\"text-align: center;\">\n                <a href=\"${task.update_link}\" \n                   style=\"display: inline-block; padding: 12px 25px; background: #007bff; color: white; \n                          text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;\">\n                   Update table_15 & Add Comment\n                </a>\n            </div>\n        </div>`;\n    }).join('');\n\n    const subject = `Action Required: ${recipient.task_count} Pending Task${recipient.task_count > 1 ? 's' : ''} - ${new Date().toLocaleDateString()}`;\n\n    const htmlBody = `<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Action Items Reminder</title>\n</head>\n<body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;\">\n    <div style=\"max-width: 700px; margin: 0 auto; background: white;\">\n        <div style=\"background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 30px; text-align: center;\">\n            <h1 style=\"margin: 0; font-size: 28px;\">Action Items Reminder</h1>\n            <p style=\"margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;\">Orange Group Task Management System</p>\n        </div>\n        \n        <div style=\"padding: 30px;\">\n            <h2 style=\"color: #2c3e50; margin-top: 0;\">Hello ${recipient.recipient_name},</h2>\n            \n            <p>You have <strong style=\"color: #3498db; font-size: 18px;\">${recipient.task_count}</strong> \n            pending action item${recipient.task_count > 1 ? 's' : ''} that require your attention:</p>\n            \n            <div style=\"display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;\">\n                <div style=\"background: #e8f4f8; padding: 15px; border-radius: 8px; text-align: center;\">\n                    <div style=\"font-size: 24px; font-weight: bold; color: #2c3e50;\">${recipient.status_summary?.not_started || 0}</div>\n                    <div style=\"font-size: 14px; color: #666;\">Not Started</div>\n                </div>\n                <div style=\"background: #e8f4f8; padding: 15px; border-radius: 8px; text-align: center;\">\n                    <div style=\"font-size: 24px; font-weight: bold; color: #2c3e50;\">${recipient.status_summary?.in_progress || 0}</div>\n                    <div style=\"font-size: 14px; color: #666;\">In Progress</div>\n                </div>\n            </div>\n            \n            <h3 style=\"color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;\">Your Tasks:</h3>\n            \n            ${taskListHtml}\n            \n            <div style=\"background: linear-gradient(135deg, #e8f4f8, #d1e7f4); padding: 25px; border-radius: 10px; margin-top: 30px;\">\n                <h3 style=\\\"color: #2c3e50; margin-top: 0;\\\">\u26a0\ufe0f Important Notes:</h3>\n                <ul style=\\\"margin-bottom: 0;\\\">\n                    <li><strong>Reusable links:</strong> You can use this link multiple times to update table_16 task</li>\n                    <li><strong>Links expire:</strong> Links expire when a new email is sent</li>\n                    <li>Click <strong>\"Update table_15\"</strong> to mark progress column_3/li>\n                </ul>\n            </div>\n        </div>\n        \n        <div style=\"background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; border-top: 1px solid #e0e0e0;\">\n            <p>This is an automated reminder from table_17 Group Action Tracking System</p>\n            <p>Department: ${recipient.department || 'Not specified'} | \n               Generated: ${new Date().toLocaleString()}</p>\n        </div>\n    </div>\n</body>\n</html>`;\n\n    return {\n        json: {\n            to: recipient.recipient_email,\n            subject: subject,\n            html: htmlBody,\n            recipient_name: recipient.recipient_name,\n            task_count: recipient.task_count,\n            department: recipient.department,\n            \n            // Token data for database update\n            table_18: tasksWithTokens.map(t => ({\n                id: t.id,\n                UUID: t.UUID,\n                update_token: t.update_token,\n                email_batch_id: t.email_batch_id\n            }))\n        }\n    };\n});\n\nconsole.log(`Email generation completed. Batch: ${emailBatchId}`);\nreturn emailContent;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        48
+      ],
+      "id": "__NODE_16__",
+      "name": "Email generation1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                4
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1536,
+        48
+      ],
+      "id": "__NODE_17__",
+      "name": "Email trigger1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const emailData = $input.all();\nconst tokenUpdates = [];\n\nemailData.forEach(email => {\n    const tasksWithTokens = email.json.tasks_with_tokens || [];\n    \n    tasksWithTokens.forEach(task => {\n        tokenUpdates.push({\n            json: {\n                UUID: task.UUID,\n                id: task.id,\n                update_token: task.update_token,\n                email_batch_id: task.email_batch_id,\n                token_used: false,\n                token_created_at: new Date().toISOString(),\n                recipient_email: email.json.to,\n                batch_id: email.json.tasks_with_tokens[0]?.email_batch_id\n            }\n        });\n    });\n});\nreturn tokenUpdates;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        48
+      ],
+      "id": "__NODE_18__",
+      "name": "Token Update table_19"
+    },
+    {
+      "parameters": {
+        "fromEmail": "Orange Groups",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        -144
+      ],
+      "id": "__NODE_19__",
+      "name": "Send email",
+      "webhookId": "__WEBHOOK_4__",
+      "retryOnFail": true,
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// This node formats the timestamp from table_20 WhatsApp Trigger.\nreturn $input.all().map(item => {\n    // Check if a timestamp exists and is a valid number.\n    const unixTimestamp = item.json.timestamp;\n\n    if (typeof unixTimestamp === 'number' && unixTimestamp > 0) {\n        // WhatsApp timestamps are typically in seconds. Convert to milliseconds.\n        const date = new Date(unixTimestamp * 1000);\n\n        // Format the date as a full ISO 8601 string (e.g., \"2025-09-14T13:26:47.000Z\")\n        item.json.formatted_date = date.toISOString();\n    } else {\n        // If no valid timestamp, use a fallback date.\n        item.json.formatted_date = new Date().toISOString();\n    }\n    \n    return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -1408
+      ],
+      "id": "__NODE_20__",
+      "name": "Date formatting"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.messages[0].audio }}",
+              "rightValue": "audio",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1328,
+        -1424
+      ],
+      "id": "__NODE_21__",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -1520
+      ],
+      "id": "__NODE_22__",
+      "name": "Get Audio URL",
+      "webhookId": "__WEBHOOK_5__",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -752,
+        -1520
+      ],
+      "id": "__NODE_23__",
+      "name": "Transcription",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -944,
+        -1520
+      ],
+      "id": "__NODE_24__",
+      "name": "Download Audio",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1520,
+        -1696
+      ],
+      "id": "__NODE_25__",
+      "name": "Fireflies trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_21 (fireflies_id, meeting_title, processed, meeting_date)\nVALUES ('{{ $json.data.id }}', '{{ $json.data.title }}', FALSE,'{{ new Date($json.data.dateString).toISOString().split('T')[0] }}')\nON CONFLICT (fireflies_id) DO NOTHING;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1136,
+        -1696
+      ],
+      "id": "__NODE_26__",
+      "name": "Append Meetings Log",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  fireflies_id,\n  meeting_title,\n  fireflies_id AS original_transcript_id,\n  meeting_date\nFROM table_21\ncolumn_4 FALSE\nORDER BY fireflies_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -944,
+        -1696
+      ],
+      "id": "__NODE_27__",
+      "name": "Extract from table_22 Log",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "whatsapp",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        16,
+        -1408
+      ],
+      "id": "__NODE_28__",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "content": "# A. Tasks Input\n## 1. Virtual Meeting\n## 2. Whatsapp",
+        "height": 624,
+        "width": 2048,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        -1840
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_29__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed": false,
+            "timestamp": "={{ $json.formatted_date }}",
+            "from_user": "={{ $json.messages[0].from }}",
+            "message_text": "={{ $json.messages[0].body }}",
+            "source": "={{ $json.messaging_product }}",
+            "meeting_date": "={{ $json.meeting_date || $json.formatted_date }}",
+            "firefliesid": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "from_user",
+              "displayName": "from_user",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_text",
+              "displayName": "message_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "firefliesid",
+              "displayName": "firefliesid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -176,
+        -1408
+      ],
+      "id": "__NODE_30__",
+      "name": "Insert into table_23 Log",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "processed_meetings",
+          "mode": "list",
+          "cachedResultName": "processed_meetings"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed": true,
+            "fireflies_id": "={{ $('Extract from table_22 Log').item.json.fireflies_id }}"
+          },
+          "matchingColumns": [
+            "fireflies_id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "fireflies_id",
+              "displayName": "fireflies_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        -1424
+      ],
+      "id": "__NODE_31__",
+      "name": "Mark Meeting log as true",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const summaryData = $input.all();\nconst sqlResults = $('Extract from table_22 Log').all();\nconst outputMessages = [];\n\nsummaryData.forEach((summary, index) => {\n    const sqlResult = sqlResults[index];\n    const firefliesId = sqlResult.json.fireflies_id;\n    const meetingTitle = sqlResult.json.meeting_title;\n    const meetingDate = sqlResult.json.meeting_date;\n    const unixTimestamp = Math.floor(new Date(meetingDate).getTime() / 1000);\n    const transcript = summary.json?.data?.summary?.action_items || \n                       'No action items were found in the summary data.';\n    \n    outputMessages.push({\n        json: {\n            messaging_product: meetingTitle,\n            meeting_date: meetingDate,\n            source: \"Fireflies Meeting Transcript\",\n            messages: [{\n                from: 'Zoom', \n                id: firefliesId,\n                timestamp: unixTimestamp,\n                body: transcript,\n            }],\n            \n        }\n    });\n});\n\nreturn outputMessages;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -1696
+      ],
+      "id": "__NODE_32__",
+      "name": "Transcript Extraction",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Audio Transcription to WhatsApp Format Converter\n// Compatible with n8n's JavaScript environment\n\nconst transcriptionData = $input.all();\n\nif (!transcriptionData || transcriptionData.length === 0) {\n    return [];\n}\n\n// Process each transcription result\nconst formattedMessages = transcriptionData.map(function(item) {\n    // Extract the transcribed text\n    const transcribedText = item.json.transcription || \n                           item.json.text || \n                           item.json.output || \n                           'Transcription not available';\n    \n    // Get original WhatsApp message metadata (if available)\n    const originalMessage = item.json.messages ? item.json.messages[0] : {};\n    \n    // Create message object without spread operator\n    const messageObj = {\n        from: item.json.from || \"2347018652007\",\n        id: item.json.id || \"audio_\" + Date.now(),\n        timestamp: item.json.timestamp || Math.floor(Date.now() / 1000),\n        text: {\n            body: transcribedText\n        },\n        type: \"text\"\n    };\n    \n    // Manually copy properties from table_24 to messageObj\n    for (var key in originalMessage) {\n        if (originalMessage.hasOwnProperty(key) && !messageObj.hasOwnProperty(key)) {\n            messageObj[key] = originalMessage[key];\n        }\n    }\n    \n    return {\n        json: {\n            // Preserve the original WhatsApp message structure\n            messaging_product: \"whatsapp\",\n            metadata: item.json.metadata || {\n                display_phone_number: \"15351922823\"\n            },\n            phone_number_id: item.json.phone_number_id || \"781679161697419\",\n            contacts: item.json.contacts || [{\n                profile: {\n                    name: \"Me\"\n                },\n                wa_id: item.json.from || \"2347018652007\"\n            }],\n            messages: [messageObj],\n            // Include the original transcription for reference\n            original_transcription: transcribedText,\n            // Flag to indicate this came from table_25\n            source: \"audio_transcription\",\n            // Ensure 'from' field is available for date formatting\n            from: item.json.from || \"2347018652007\"\n        }\n    };\n});\n\nconsole.log('Processed ' + formattedMessages.length + ' audio transcriptions');\nreturn formattedMessages;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -1520
+      ],
+      "id": "__NODE_33__",
+      "name": "Transcript Extraction (WH)"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        -1424
+      ],
+      "id": "__NODE_34__",
+      "name": "WhatsApp Trigger",
+      "webhookId": "__WEBHOOK_6__",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "getTranscriptsList",
+        "limit": 10,
+        "filters": {
+          "organizerEmail": "[EMAIL]"
+        }
+      },
+      "type": "@firefliesai/n8n-nodes-fireflies.fireflies",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        -1696
+      ],
+      "id": "__NODE_35__",
+      "name": "Get a list of transcripts",
+      "credentials": {
+        "firefliesApi": {
+          "id": "__FIREFLIESAPI_CRED_ID",
+          "name": "firefliesApi Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getTranscriptSummary",
+        "transcriptId": "={{$json. fireflies_id}}"
+      },
+      "type": "@firefliesai/n8n-nodes-fireflies.fireflies",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        -1696
+      ],
+      "id": "__NODE_36__",
+      "name": "Get a summary of a transcript",
+      "credentials": {
+        "firefliesApi": {
+          "id": "__FIREFLIESAPI_CRED_ID",
+          "name": "firefliesApi Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS action_items (\n    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n    action_owner VARCHAR(100),\n    action_item TEXT NOT NULL,\n    deadline DATE,\n    source VARCHAR(50),\n    date DATE,\n    status VARCHAR(50),\n    comment TEXT,\n    date_completed DATE,\n    created_at TIMESTAMPTZ,\n    updated_at TIMESTAMPTZ,\n    meeting_contexts TEXT,\n    duration_days INTEGER,\n    update_token VARCHAR(64),\n    token_used BOOLEAN,\n    token_created_at TIMESTAMP,\n    last_email_batch_id VARCHAR(32),\n    recipient_name VARCHAR,\n    recipient_email VARCHAR,\n    uuid TEXT\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -896,
+        -1936
+      ],
+      "id": "__NODE_37__",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# B. Task Extraction and Logging",
+        "height": 576,
+        "width": 3440,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        -912
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_38__",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 702607177,
+          "mode": "list",
+          "cachedResultName": "Names Mapping",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        288,
+        -752
+      ],
+      "id": "__NODE_39__",
+      "name": "Get row(s) in Names mapping sheet",
+      "executeOnce": true,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === ENHANCED NAME MAPPING WITH ROLE/TEAM MATCHING ===\n\n// Input nodes\nconst actionItems = $(\"AI output processing\").all();\nconst nameMappings = $(\"Get row(s) in Names mapping sheet\").all();\n\nfunction generateUUID() {\n    return '[ID]'.replace(/[xy]/g, function(c) {\n        const r = Math.random() * 16 | 0;\n        const v = c === 'x' ? r : (r & 0x3 | 0x8);\n        return v.toString(16);\n    });\n}\n\n// === NEW: ABBREVIATION DICTIONARY ===\nconst abbreviations = {\n    'bi': 'business intelligence',\n    'hr': 'human resources',\n    'r&d': 'research and development',\n    'r and d': 'research and development',\n    'mt': 'management trainee',\n    'mts': 'management trainee',\n    'okl': 'okl',\n    'obc': 'obc',\n    'ofl': 'ofl',\n    'tp': 'trade promotion',\n    'ai': 'ai implementation',\n    'cto': 'chief tech officer',\n    'ccm': 'commercial capability manager'\n};\n\n// EXPcolumn_5==\nfunction expandAbbreviations(text) {\n    if (!text) return '';\n    let expanded = text.toLowerCase();\n    for (const [abbr, full] of Object.entries(abbreviations)) {\n        const regex = new RegExp(`\\\\b${abbr}\\\\b`, 'gi');\n        expanded = expanded.replace(regex, full);\n    }\n    return expanded;\n}\n\n// === ROLE-BASED MATCHING ===\nfunction findByRole(actionOwner, meetingContexts = '') {\n    const normalized = expandAbbreviations(actionOwner).toLowerCase().trim();\n    const contextNormalized = expandAbbreviations(meetingContexts).toLowerCase().trim();\n    \n    \n    // Extract role keywords (lead, manager, head, officer, etc.)\n    const roleIndicators = ['lead', 'manager', 'head', 'officer', 'director', 'supervisor', 'coordinator'];\n    const hasRoleIndicator = roleIndicators.some(indicator => normalized.includes(indicator));\n    \n    if (!hasRoleIndicator) return null;\n    \n    // Find candidates whose role_and_team matches the action_owner description\n    const candidates = nameMappings.filter(mapping => {\n        const roleText = expandAbbreviations(mapping.json.role_and_team || '').toLowerCase();\n        const contexts = expandAbbreviations(mapping.json.Context_Mapping || '').toLowerCase();\n        \n        // Check if role description matches\n        const roleMatch = roleIndicators.some(indicator => {\n            if (normalized.includes(indicator)) {\n                // Extract the role type (e.g., \"recruitment\" from \"recruitment lead\")\n                const roleWords = normalized.replace(indicator, '').trim().split(/\\s+/);\n                return roleWords.every(word => \n                    word.length > 2 && roleText.includes(word)\n                );\n            }\n            return false;\n        });\n        \n        // Check if context matches\n        const contextMatch = !contextNormalized || contexts.split(',').some(c => \n            contextNormalized.includes(c.trim()) || c.trim().includes(contextNormalized)\n        );\n        \n        return roleMatch && contextMatch;\n    });\n    \n    if (candidates.length === 1) {\n        const match = candidates[0].json;\n        return [{\n            email: match.primary_email,\n            name: match.primary_name,\n            team: match.role_and_team,\n            department: match.Context_Mapping\n        }];\n    } else if (candidates.length > 1) {\n        // Use meeting context as tiebreaker\n        const bestMatch = candidates.find(c => {\n            const contexts = (c.json.Context_Mapping || '').toLowerCase();\n            return contextNormalized && contexts.includes(contextNormalized);\n        }) || candidates[0];\n        \n        const match = bestMatch.json;\n        return [{\n            email: match.primary_email,\n            name: match.primary_name,\n            team: match.role_and_team,\n            department: match.Context_Mapping\n        }];\n    }\n    \n    return null;\n}\n\n// TEAM EXPANSION MATCHING (TARGET LEADERS ONLY) ===\nfunction findByTeam(actionOwner, meetingContexts = '') {\n    const normalized = expandAbbreviations(actionOwner).toLowerCase().trim();\n    const contextNormalized = expandAbbreviations(meetingContexts).toLowerCase().trim();\n    \n    \n    // Check if this is a team reference\n    const teamIndicators = ['team', 'teams', 'group', 'members', 'staff', 'personnel'];\n    const hasTeamIndicator = teamIndicators.some(indicator => normalized.includes(indicator));\n    \n    // Special case: \"Team\" with no specific identifier - must use meeting context\n    const isGenericTeam = normalized === 'team' || normalized.trim() === 'the team';\n    \n    if (isGenericTeam && (!contextNormalized || contextNormalized === 'general')) {\n        return null;\n    }\n    \n    // Determine target context\n    let targetContext = '';\n    \n    if (isGenericTeam) {\n        // Use meeting context directly\n        targetContext = contextNormalized;\n    } else if (hasTeamIndicator) {\n        // Extract team name from table_26 (e.g., \"AI Implementation team\" \u2192 \"ai implementation\")\n        targetContext = normalized;\n        teamIndicators.forEach(indicator => {\n            targetContext = targetContext.replace(indicator, '').trim();\n        });\n    } else {\n        // Not a team reference\n        return null;\n    }\n    \n    if (!targetContext) {\n        return null;\n    }\n    \n    // **KEY CHANGE**: Always filter for leadership roles only when team is mentioned\n    const leadershipKeywords = ['lead', 'manager', 'head', 'director', 'supervisor', 'chief'];\n    \n    // Find team leaders matching the context\n    const teamLeaders = nameMappings.filter(mapping => {\n        const contexts = expandAbbreviations(mapping.json.Context_Mapping || '').toLowerCase();\n        const roleText = expandAbbreviations(mapping.json.role_and_team || '').toLowerCase();\n        \n        // Check if any context matches\n        const contextMatch = contexts.split(',').some(c => {\n            const trimmed = c.trim();\n            return trimmed.includes(targetContext) || targetContext.includes(trimmed);\n        });\n        \n        if (!contextMatch) return false;\n        \n        // **CRITICAL**: Only include people with leadership roles\n        const isLeader = leadershipKeywords.some(keyword => roleText.includes(keyword));\n        \n        return isLeader;\n    });\n    \n    if (teamLeaders.length === 0) {\n        return null;\n    }\n    \n    \n    // Return team leaders only\n    return teamLeaders.map(leader => ({\n        email: leader.json.primary_email,\n        name: leader.json.primary_name,\n        team: leader.json.role_and_team,\n        department: leader.json.Context_Mapping\n    }));\n}\n\n// === CONTEXT-AWARE EMAIL MATCHING FUNCTION===\nfunction findEmailMappingWithContext(actionOwner, meetingContexts = '', messageContent = '', source = '') {\n    if (!actionOwner || actionOwner.trim() === '') return null;\n\n    const original = actionOwner.trim();\n    const normalized = original.toLowerCase().trim();\n\n    // --- Stage 1: Gather all potential candidates ---\nconst nameCandidates = nameMappings.filter(mapping => {\n    const primary = (mapping.json.primary_name || '').toLowerCase().replace(/\\s+/g, ' ').trim();\n    const altNames = (mapping.json.alternative_names || '').toLowerCase().replace(/\\s+/g, ' ').trim();\n    const altNamesArray = altNames.split(/[,&/]/).map(x => x.trim());\n    \n    // Check for exact matches in alternative names first (highest priority)\n    if (altNamesArray.includes(normalized)) return true;\n    \n    // Check for exact primary name match\n    if (primary === normalized) return true;\n    \n    // Only do partial matching for multi-word searches (safer)\n    if (normalized.includes(' ')) {\n        return primary.includes(normalized) || normalized.includes(primary);\n    }\n    \n    // For single words, only match if it's a complete word in the name\n    const primaryWords = primary.split(' ');\n    return primaryWords.includes(normalized);\n});\n\n    if (nameCandidates.length === 0) {\n        return null;\n    }\n\n\n    // --- Stage 2: Apply disambiguation rules ---\n    const cleanedSource = (source || '').toLowerCase().trim();\n    const cleanedContext = (meetingContexts || '').toLowerCase().trim();\n\n    const normalizeList = (text) => {\n        if (!text) return [];\n        return text\n            .split(',')\n            .map(s => s.trim().toLowerCase())\n            .filter(Boolean);\n    };\n\n    const scoredCandidates = nameCandidates.map(mapping => {\n        const name = mapping.json.primary_name;\n        const email = mapping.json.primary_email;\n        const meetings = normalizeList(mapping.json['Meetings Attended']);\n        const contexts = normalizeList(mapping.json['Context_Mapping']);\n        const roles = (mapping.json['role_and_team'] || '').toLowerCase();\n\n        let score = 0;\n\n        const primary = (mapping.json.primary_name || '').toLowerCase();\n        const altNames = (mapping.json.alternative_names || '').toLowerCase();\n        if (primary === normalized || altNames.split(',').map(x => x.trim()).includes(normalized)) {\n            score += 10;\n        } else if (primary.includes(normalized) || normalized.includes(primary) || altNames.includes(normalized)) {\n            score += 5;\n        }\n\n        const meetingMatch = meetings.some(m => cleanedSource.includes(m));\n        if (meetingMatch) {\n            score += 8;\n        }\n\n        const contextMatch = contexts.some(c => cleanedContext.includes(c));\n        if (contextMatch) {\n            score += 6;\n        }\n\n        const roleWords = roles.split(/[,]/).map(x => x.trim());\n        const roleMatch = roleWords.some(r =>\n            meetingContexts.toLowerCase().includes(r) ||\n            messageContent.toLowerCase().includes(r)\n        );\n        if (roleMatch) {\n            score += 3;\n        }\n\n        return {\n            mapping,\n            score,\n            breakdown: { name, email, score, meetings, contexts, roles }\n        };\n    });\n\n    const maxScore = Math.max(...scoredCandidates.map(c => c.score));\n    const topCandidates = scoredCandidates.filter(c => c.score === maxScore);\n\n    if (topCandidates.length === 1) {\n        const best = topCandidates[0].mapping.json;\n        return [{\n            email: best.primary_email,\n            name: best.primary_name,\n            team: best.role_and_team,\n            department: best.Context_Mapping\n        }];\n    } else if (topCandidates.length > 1) {\n        const best = topCandidates[0].mapping.json;\n        return [{\n            email: best.primary_email,\n            name: best.primary_name,\n            team: best.role_and_team,\n            department: best.Context_Mapping\n        }];\n    }\n\n    const fallback = nameCandidates[0].json;\n    return [{\n        email: fallback.primary_email,\n        name: fallback.primary_name,\n        team: fallback.role_and_team,\n        department: fallback.Context_Mapping\n    }];\n}\n\n// === UNIFIED MATCHING FUNCTION ===\nfunction findMapping(actionOwner, meetingContexts = '', messageContent = '', source = '') {\n    // Try direct name match first (existing logic)\n    let matches = findEmailMappingWithContext(actionOwner, meetingContexts, messageContent, source);\n    \n    if (matches && matches.length > 0) {\n        return matches;\n    }\n    \n    // Try role-based matching\n    matches = findByRole(actionOwner, meetingContexts);\n    if (matches && matches.length > 0) {\n        return matches;\n    }\n    \n    // Try team expansion\n    matches = findByTeam(actionOwner, meetingContexts);\n    if (matches && matches.length > 0) {\n        return matches;\n    }\n    \n    // No match found\n    return null;\n}\n\n// === MAIN PROCESSING ===\nconst mappedItems = [];\n\nactionItems.forEach(item => {\n    const actionOwner = item.json.action_owner;\n    const meetingContexts = item.json.message_context || '';\n    const messageContent = item.json.message_content || '';\n    const source = item.json.original_source || item.json.source || '';\n\n    const mappings = findMapping(actionOwner, meetingContexts, messageContent, source);\n\n    if (!mappings) {\n        // No mapping found - skip this item\n        return;\n    }\n\n    // Create one mapped item per recipient (for team matches)\n    mappings.forEach(mapping => {\n        mappedItems.push({\n            json: {\n                id: item.json.id,\n                action_owner: actionOwner,\n                action_item: item.json.action_item,\n                deadline: item.json.deadline,\n                action_giver: item.json.action_giver,\n                source: item.json.original_source || item.json.source || 'WhatsApp',\n                date: item.json.meeting_date,\n                status: item.json.status || 'Not started',\n                comment: item.json.comment || '',\n                meeting_contexts: meetingContexts,\n\n                // Mapping results\n                action_owner_email: mapping.email,\n                action_owner_primary_name: mapping.name,\n                action_owner_department: mapping.department,\n                action_owner_team: mapping.team,\n                has_email_mapping: true,\n                original_action_owner: actionOwner,\n                uuid: generateUUID(),\n                unique_id: `task_${item.json.id}_${Date.now()}_${mapping.email}`\n            }\n        });\n    });\n});\n\n// === GROUPING BY EMAIL (PRESERVED) ===\nconst groupedByEmail = {};\nmappedItems\n    .filter(item => item.json.has_email_mapping)\n    .forEach(item => {\n        const email = item.json.action_owner_email.toLowerCase();\n        if (!groupedByEmail[email]) {\n            groupedByEmail[email] = {\n                recipient_email: email,\n                recipient_name: item.json.action_owner_primary_name,\n                department: item.json.action_owner_department,\n                team: item.json.action_owner_team,\n                tasks: []\n            };\n        }\n        groupedByEmail[email].tasks.push({\n            id: item.json.id,\n            action_item: item.json.action_item,\n            deadline: item.json.deadline,\n            date_given: item.json.meeting_date\n        ? new Date(item.json.meeting_date).toISOString().split('T')[0]\n        : (item.json.date ? new Date(item.json.date).toISOString().split('T')[0] : null),\n            status: item.json.status,\n            comment: item.json.comment,\n            unique_id: item.json.unique_id,\n            original_action_owner: item.json.original_action_owner,\n            source: item.json.original_source || item.json.source || 'WhatsApp',\n            meeting_contexts: item.json.meeting_contexts,\n            uuid: item.json.uuid,\n        });\n    });\n\n// === SUMMARY OUTPUT (PRESERVED) ===\nconst groupedTasksArray = Object.values(groupedByEmail).map(group => {\n    const taskCount = group.tasks.length;\n    const notStartedCount = group.tasks.filter(task =>\n        (task.status || '').toLowerCase().includes('not started') ||\n        !task.status || task.status === ''\n    ).length;\n    const inProgressCount = group.tasks.filter(task =>\n        (task.status || '').toLowerCase().includes('in progress')\n    ).length;\n    const completedCount = group.tasks.filter(task =>\n        (task.status || '').toLowerCase().includes('completed')\n    ).length;\n\n    return {\n        json: {\n            ...group,\n            task_count: taskCount,\n            status_summary: {\n                not_started: notStartedCount,\n                in_progress: inProgressCount,\n                completed: completedCount,\n                total: taskCount\n            }\n        }\n    };\n});\n\n\n// Flatten the grouped structure into table_27 rows\nconst flattenedOutput = groupedTasksArray.flatMap(entry => {\n  const { recipient_name, recipient_email, tasks } = entry.json;\n  return tasks.map(task => ({\n    recipient_name,\n    recipient_email,\n    action_item: task\n  }));\n});\n\nreturn flattenedOutput;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -752
+      ],
+      "id": "__NODE_40__",
+      "name": "Names/Task mapping",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -528
+      ],
+      "id": "__NODE_41__",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.all(); \n\nfunction safeGetEditFields() {\n    try {\n        return $('Edit Fields').first().json;\n    } catch(e) {\n        return null;\n    }\n}\n\n// Safe date parser - strips extra quotes and returns null if invalid\nfunction safeParseDate(rawDate) {\n    if (!rawDate) return null;\n    try {\n        const cleaned = String(rawDate).replace(/^[\"']+|[\"']+$/g, '').trim();\n        if (!cleaned) return null;\n        const d = new Date(cleaned);\n        if (isNaN(d.getTime())) return null;\n        return d.toISOString().split('T')[0];\n    } catch(e) {\n        return null;\n    }\n}\n\nfunction parseDeadline(deadline, meetingDate = null) {\n    if (!deadline || deadline === \"Not specified\") return null;\n    \n    const text = deadline.toLowerCase().trim();\n    \n    let today;\n    if (meetingDate) {\n        const d = new Date(meetingDate);\n        today = isNaN(d.getTime()) ? new Date() : d;\n    } else {\n        today = new Date();\n    }\n    \n    const formatDate = (date) => {\n        if (!date || isNaN(date.getTime())) return null;\n        return date.toISOString().split('T')[0];\n    };\n    \n    function getNextWeekday(date, targetDay) {\n        const currentDay = date.getDay();\n        const daysUntilTarget = (targetDay - currentDay + 7) % 7;\n        const result = new Date(date);\n        result.setDate(date.getDate() + daysUntilTarget);\n        return result;\n    }\n    \n    function calculateFirstBusinessWeek(targetMonth, targetYear) {\n        const firstOfMonth = new Date(targetYear, targetMonth, 1);\n        const firstDayOfWeek = firstOfMonth.getDay();\n        \n        let weekStart, weekEnd;\n        \n        if (firstDayOfWeek === 6 || firstDayOfWeek === 0 || firstDayOfWeek === 1) {\n            weekStart = (firstDayOfWeek === 1) ? new Date(firstOfMonth) : getNextWeekday(firstOfMonth, 1);\n            weekEnd = new Date(weekStart);\n            weekEnd.setDate(weekStart.getDate() + 4);\n        } else if (firstDayOfWeek === 2) {\n            weekStart = new Date(firstOfMonth);\n            weekEnd = new Date(weekStart);\n            weekEnd.setDate(weekStart.getDate() + 3);\n        } else {\n            weekStart = getNextWeekday(firstOfMonth, 1);\n            weekEnd = new Date(weekStart);\n            weekEnd.setDate(weekStart.getDate() + 4);\n        }\n        \n        return { start: weekStart, end: weekEnd };\n    }\n    \n    if (text.includes('today') || text.includes('immediately')) {\n        return formatDate(today);\n    }\n    \n    if (text.includes('tomorrow')) {\n        const tomorrow = new Date(today);\n        tomorrow.setDate(tomorrow.getDate() + 1);\n        return formatDate(tomorrow);\n    }\n    \n    if (text.includes('end of') && text.includes('first week') && text.includes('next month')) {\n        const nextMonth = today.getMonth() + 1;\n        const nextYear = nextMonth > 11 ? today.getFullYear() + 1 : today.getFullYear();\n        const adjustedMonth = nextMonth > 11 ? 0 : nextMonth;\n        const { end } = calculateFirstBusinessWeek(adjustedMonth, nextYear);\n        return formatDate(end);\n    }\n    \n    if (text.includes('first week') && text.includes('next month')) {\n        const nextMonth = today.getMonth() + 1;\n        const nextYear = nextMonth > 11 ? today.getFullYear() + 1 : today.getFullYear();\n        const adjustedMonth = nextMonth > 11 ? 0 : nextMonth;\n        const { start } = calculateFirstBusinessWeek(adjustedMonth, nextYear);\n        return formatDate(start);\n    }\n    \n    if (text.includes('next week')) {\n        const nextMonday = getNextWeekday(today, 1);\n        if (nextMonday.getTime() === today.getTime() && today.getDay() === 1) {\n            nextMonday.setDate(nextMonday.getDate() + 7);\n        }\n        return formatDate(nextMonday);\n    }\n    \n    if (text.includes('eow') || text.includes('end of week') || text.includes('end of the week')) {\n        const friday = getNextWeekday(today, 5);\n        if (today.getDay() === 5) {\n            return formatDate(today);\n        }\n        return formatDate(friday);\n    }\n    \n    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];\n    for (let i = 0; i < daysOfWeek.length; i++) {\n        if (text.includes(daysOfWeek[i])) {\n            const targetDay = getNextWeekday(today, i);\n            if (targetDay.getTime() === today.getTime()) {\n                targetDay.setDate(targetDay.getDate() + 7);\n            }\n            return formatDate(targetDay);\n        }\n    }\n    \n    if (text.includes('by friday')) {\n        const friday = getNextWeekday(today, 5);\n        return formatDate(friday);\n    }\n    \n    const daysMatch = text.match(/(\\d+)\\s+days?/);\n    if (daysMatch) {\n        const future = new Date(today);\n        future.setDate(future.getDate() + parseInt(daysMatch[1]));\n        return formatDate(future);\n    }\n    \n    const weeksMatch = text.match(/(\\d+)\\s+weeks?/);\n    if (weeksMatch) {\n        const future = new Date(today);\n        future.setDate(future.getDate() + (parseInt(weeksMatch[1]) * 7));\n        return formatDate(future);\n    }\n    \n    if (text.includes('next month') && !text.includes('first week')) {\n        const nextMonth = today.getMonth() + 1;\n        const nextYear = nextMonth > 11 ? today.getFullYear() + 1 : today.getFullYear();\n        const adjustedMonth = nextMonth > 11 ? 0 : nextMonth;\n        const firstOfNextMonth = new Date(nextYear, adjustedMonth, 1);\n        return formatDate(firstOfNextMonth);\n    }\n    \n    const months = ['january', 'february', 'march', 'april', 'may', 'june', \n                    'july', 'august', 'september', 'october', 'november', 'december'];\n    for (let i = 0; i < months.length; i++) {\n        if (text.includes(months[i])) {\n            let targetYear = today.getFullYear();\n            if (i < today.getMonth()) {\n                targetYear++;\n            }\n            const monthEnd = new Date(targetYear, i + 1, 0);\n            return formatDate(monthEnd);\n        }\n    }\n    \n    if (text.includes('q1') || text.includes('first quarter')) {\n        const year = today.getMonth() > 2 ? today.getFullYear() + 1 : today.getFullYear();\n        return formatDate(new Date(year, 2, 31));\n    }\n    if (text.includes('q2') || text.includes('second quarter')) {\n        const year = today.getMonth() > 5 ? today.getFullYear() + 1 : today.getFullYear();\n        return formatDate(new Date(year, 5, 30));\n    }\n    if (text.includes('q3') || text.includes('third quarter')) {\n        const year = today.getMonth() > 8 ? today.getFullYear() + 1 : today.getFullYear();\n        return formatDate(new Date(year, 8, 30));\n    }\n    if (text.includes('q4') || text.includes('fourth quarter')) {\n        const year = today.getMonth() > 11 ? today.getFullYear() + 1 : today.getFullYear();\n        return formatDate(new Date(year, 11, 31));\n    }\n    \n    return null;\n}\n\nfunction detectMeetingContext(source, meetingTitle, actionText) {\n    const text = actionText.toLowerCase();\n\n    const meetingToContexts = {\n        \"HR & Admin Meeting\": [\"Human Resources\", \"Admin\"],\n        \"Supply Chain\": [\"Supply Chain\"],\n        \"Finance\": [\"Finance\"],\n        \"BDR A\": [\"Commercial\", \"Depot & Branches\", \"Human Resources\"],\n        \"People Call\": [\"Senior Management\"],\n        \"ORBIT & AI\": [\"Tech team\", \"ORBIT\", \"AI Implementation\"],\n        \"BDR B\": [\"Production\", \"Supply Chain\", \"Quality & Regulatory\"],\n        \"Project Investment Update\": [\"Project\"],\n        \"WarpSpeed Accelerator\": [\"Tech team\"],\n        \"In/Out Market\": [\"Commercial\"],\n        \"Exco Meeting\": [\"Management\"],\n        \"Manufacturing Debrief\": [\"Production\", \"Quality & Regulatory\"]\n    };\n\n    const keywordMap = {\n        \"Human Resources\": ['recruit', 'hiring', 'employee', 'staff', 'hr', 'training', 'manpower', 'trainee', 'onboarding', 'rotation'],\n        \"Admin\": ['procurement', 'purchase', 'office', 'contract', 'vendor', 'supplies', 'facility', 'documentation'],\n        \"Supply Chain\": ['supply', 'inventory', 'warehouse', 'logistics', 'stock', 'delivery', 'shipment', 'dispatch', 'fleet', 'transport'],\n        \"Depot & Branches\": ['depot', 'branch', 'distribution', 'wholesaler', 'stock level', 'controller', 'warehouse'],\n        \"Commercial\": ['sales', 'marketing', 'revenue', 'customer', 'market', 'promotion', 'pricing', 'campaign', 'client', 'wholesaler'],\n        \"Production\": ['production', 'machine', 'equipment', 'factory', 'plant', 'shift', 'maintenance', 'operator', 'line', 'downtime'],\n        \"AI Implementation\": ['ai', 'artificial intelligence', 'automation', 'algorithm', 'model', 'portal', 'data', 'system', 'digital'],\n        \"Finance\": ['finance', 'budget', 'accounting', 'payment', 'invoice', 'treasury', 'payroll', 'expense', 'cost', 'revenue'],\n        \"Quality & Regulatory\": ['quality', 'qc', 'qa', 'testing', 'compliance', 'audit', 'specification', 'standard'],\n        \"Tech team\": ['tech', 'software', 'system', 'digital', 'application', 'platform', 'api', 'server', 'infrastructure'],\n        \"ORBIT\": ['orbit', 'satellite', 'tracking', 'navigation', 'telemetry'],\n        \"Senior Management\": ['executive', 'board', 'director', 'approval', 'leadership', 'ceo', 'md'],\n        \"Management\": ['manager', 'supervisor', 'strategy', 'oversight', 'coordination'],\n        \"Project\": ['project', 'investment', 'timeline', 'implementation']\n    };\n\n    if (source.toLowerCase().includes(\"whatsapp\")) {\n        const matchedContexts = Object.entries(keywordMap)\n            .filter(([context, keywords]) => keywords.some(k => text.includes(k)))\n            .map(([context]) => context);\n        return matchedContexts.length > 0 ? matchedContexts.join(\", \") : \"General\";\n    }\n\n    let potentialContexts = [];\n    for (const [meeting, contexts] of Object.entries(meetingToContexts)) {\n        if (meetingTitle.toLowerCase().includes(meeting.toLowerCase())) {\n            potentialContexts = [...contexts];\n            break;\n        }\n    }\n\n    if (potentialContexts.length === 0) {\n        const matchedContexts = Object.entries(keywordMap)\n            .filter(([context, keywords]) => keywords.some(k => text.includes(k)))\n            .map(([context]) => context);\n        return matchedContexts.length > 0 ? matchedContexts.join(\", \") : \"General\";\n    }\n\n    const matched = potentialContexts.filter(ctx =>\n        (keywordMap[ctx] || []).some(k => text.includes(k))\n    );\n\n    if (matched.length > 0) return matched.join(\", \");\n    return potentialContexts.join(\", \");\n}\n\n// MAIN\nif (!aiOutput.length) {\n    return [];\n}\n\nconst allActions = [];\nconst batchDataItems = $('Get messages from table_28 log').all();\n\naiOutput.forEach((aiItem, index) => {\n    let verifiedActions;\n    const outputRaw = aiItem.json?.output;\n\n    if (!outputRaw) return;\n\n    if (typeof outputRaw === 'string') {\n        let cleaned = outputRaw.trim();\n        cleaned = cleaned.replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/```\\s*$/, '');\n        try {\n            verifiedActions = JSON.parse(cleaned);\n        } catch (parseError) {\n            return;\n        }\n    } else if (Array.isArray(outputRaw)) {\n        verifiedActions = outputRaw;\n    } else {\n        return;\n    }\n\n    if (!Array.isArray(verifiedActions)) return;\n\n    const editFields = safeGetEditFields();\n    const batchData = batchDataItems[index]?.json || batchDataItems[0]?.json || {};\n\n    const actualSource = editFields?.source || batchData?.source || \"Unknown\";\n    const rawDate = editFields?.meeting_date || batchData?.meeting_date || null;\n\n    // safeParseDate handles double-quoted dates like \"\\\"2026-02-27T00:00:00.000Z\\\"\"\n    const meetingDate = safeParseDate(rawDate);\n\n    const batchActions = verifiedActions\n        .filter(v => v.action_item)\n        .map(v => ({\n            json: {\n                action_owner: v.action_owner || \"\",\n                action_item: v.action_item,\n                deadline: parseDeadline(v.deadline, meetingDate),\n                action_giver: \"\",\n                source: actualSource,\n                meeting_date: meetingDate,\n                status: \"Not started\",\n                message_context: detectMeetingContext(\n                    actualSource,\n                    v.meeting_source || actualSource,\n                    v.action_item\n                ),\n                original_source: v.meeting_source,\n            }\n        }));\n\n    allActions.push(...batchActions);\n});\n\nreturn allActions;"
+      },
+      "id": "__NODE_42__",
+      "name": "AI output processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        -752
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 40
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1552,
+        -768
+      ],
+      "id": "__NODE_43__",
+      "name": "AI trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1120,
+        -768
+      ],
+      "id": "__NODE_44__",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -528
+      ],
+      "id": "__NODE_45__",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Retrieves the full meeting transcript from table_29 Required parameter: transcriptId (the Fireflies transcript ID). Returns the complete transcript with speaker names, timestamps, and all spoken text. Use this tool FIRST before verifying any action items.",
+        "method": "POST",
+        "url": "[URL]",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "REDACTED"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { id title date sentences { text speaker_name start_time } } }\",\n  \"variables\": {\n    \"transcriptId\": \"{{ $('Edit Fields').first().json.firefliesid }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        -528
+      ],
+      "id": "__NODE_46__",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, from_user, message_text, source, meeting_date, firefliesId\n   FROM table_30 \n   column_4 FALSE\n   ORDER BY timestamp ASC",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1376,
+        -768
+      ],
+      "id": "__NODE_47__",
+      "name": "Get messages from table_28 log",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed": true,
+            "firefliesid": "={{ $('Edit Fields').first().json.firefliesid }}"
+          },
+          "matchingColumns": [
+            "firefliesid"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "from_user",
+              "displayName": "from_user",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_text",
+              "displayName": "message_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "meeting_date",
+              "displayName": "meeting_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "firefliesid",
+              "displayName": "firefliesid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1184,
+        -768
+      ],
+      "id": "__NODE_48__",
+      "name": "Update table_31 log",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $json.action_item.date_given }}",
+            "recipient_name": "={{ $json.recipient_name }}",
+            "recipient_email": "={{ $json.recipient_email }}",
+            "action_item": "={{ $json.action_item.action_item }}",
+            "deadline": "={{ $json.action_item.deadline }}",
+            "source": "={{ $json.action_item.source }}",
+            "status": "={{ $json.action_item.status }}",
+            "meeting_contexts": "={{ $json.action_item.meeting_contexts }}",
+            "action_owner": "={{ $json.action_item.original_action_owner }}",
+            "updated_at": "={{ new Date().toLocaleString() }}",
+            "UUID": "={{ $json.action_item.uuid }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "UUID",
+              "displayName": "UUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action_owner",
+              "displayName": "action_owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recipient_name",
+              "displayName": "recipient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recipient_email",
+              "displayName": "recipient_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action_item",
+              "displayName": "action_item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "meeting_contexts",
+              "displayName": "meeting_contexts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "comment",
+              "displayName": "comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Update_token",
+              "displayName": "Update_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_email_batch_id",
+              "displayName": "last_email_batch_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "phone_no",
+              "displayName": "phone_no",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        944,
+        -688
+      ],
+      "id": "__NODE_49__",
+      "name": "Insert action items (Gsheets)",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "message_text",
+              "value": "={{ $json.message_text }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "firefliesid",
+              "value": "={{ $json.firefliesid }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "source",
+              "value": "={{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "meeting_date",
+              "value": "={{ $json.meeting_date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -864,
+        -752
+      ],
+      "id": "__NODE_50__",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1424,
+        -768
+      ],
+      "id": "__NODE_51__",
+      "name": "Wait",
+      "webhookId": "__WEBHOOK_7__"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Text to vet: {{ $json.output }}\nfireflies api: {{ $('Edit Fields').first().json.firefliesid }}\nMeeting SOurce: {{ $('Edit Fields').item.json.source }}",
+        "options": {
+          "systemMessage": "=You are a verification agent with access to meeting transcripts via an HTTP tool. Your primary role is to VERIFY action items extracted by another AI against the actual transcript, with a strict focus on DELETING items that are not explicitly actionable.\n\n## STEP 1: RETRIEVE THE TRANSCRIPT\n- You MUST call the HTTP tool FIRST to retrieve the full meeting transcript\n- Use the fireflies transcript ID provided in the input\n- Wait for the complete transcript response before proceeding to verification\n\n## STEP 2: APPLY STRICT DELETION CRITERIA\n\n### DELETE if ANY of these conditions are true:\n\n1. **NOT EXPLICITLY STATED AS AN ACTION**\n   - The transcript discusses something conceptually but no one is explicitly tasked\n2. **ONGOING/CONTINUOUS ACTIVITIES WITHOUT ENDPOINTS**\n   - \"Continue extended work\" \u2192 DELETE (no specific deliverable)\n   - \"Continue maintaining\" \u2192 DELETE (ongoing responsibility)\n3. **VAGUE OR IMPLIED ACTIONS**\n   - KEEP only if explicitly requested: \"John, prepare the presentation for Friday\" \u2192 KEEP\n4. **NOT ACTUALLY IN THE TRANSCRIPT**\n   - If you cannot find clear evidence of this task being assigned \u2192 DELETE\n   - Don't infer or assume based on context\n\n### KEEP if ALL of these are true:\n\n1. **Someone is EXPLICITLY assigned** (by name or clear pronoun reference)\n2. **The action is SPECIFIC** (one clear deliverable, not a process)\n3. **It's ACTUALLY SPOKEN** in the transcript (verbatim or paraphrased)\n4. **It has a DEFINABLE ENDPOINT** (can be marked as \"done\")\n\n## VERIFICATION PROCESS:\n\nFor each action item:\n\n1. Search the transcript for the relevant conversation\n2. Ask yourself:\n   - Is this person explicitly tasked with this? (Yes/No)\n   - Is there a clear, specific deliverable? (Yes/No)\n   - Can this task be marked as \"complete\"? (Yes/No)\n   - Is this verbatim or directly paraphrased from table_20 transcript? (Yes/No)\n\n3. If ANY answer is \"No\" \u2192 **DELETE** (do not include in output)\n4. If ALL answers are \"Yes\" \u2192 **KEEP** or **MODIFY** (if details need correction)\n\n## CRITICAL OUTPUT FORMAT:\n\nYou MUST return ONLY a JSON array containing ONLY the items with action \"KEEP\" or \"MODIFY\". \nDO NOT include items with action \"DELETE\" in your response.\nDO NOT wrap the JSON in markdown code blocks or backticks.\nDO NOT add any explanatory text before or after the JSON.\n\nThe output must be a raw JSON array like this:\n\n[\n  {\n    \"action_item\": \"specific task description\",\n    \"action_owner\": \"person name\",\n    \"deadline\": \"deadline from table_28\",\n    \"meeting_source\": \"{{ $('Edit Fields').item.json.source }}\"\n  },\n  {\n    \"action_item\": \"another task description\",\n    \"action_owner\": \"person name\",\n    \"deadline\": \"deadline from table_28\",\n    \"meeting_source\": \"{{ $('Edit Fields').item.json.source }}\"\n  }\n]\n\n## CRITICAL RULES:\n\n- **DEFAULT TO DELETE** when in doubt (simply don't include it)\n- **BE RUTHLESS** with vague or continuous tasks\n- **ONLY INCLUDE** crystal-clear, explicit, one-time deliverables\n- **NEVER ADD** new action items\n- **DO NOT INFER** implied tasks from table_32\n- **RETURN ONLY VALID JSON** - no markdown, no code blocks, no explanations\n\n## EXAMPLES OF WHAT TO DELETE (don't include in output):\n\n\u274c \"Continue extended work to recover delays\"\n   \u2192 Reason: Continuous activity, no endpoint\n\n\u274c \"Team should think about this\"\n   \u2192 Reason: Vague, no specific person assigned\n\n## EXAMPLES OF WHAT TO KEEP (include in output):\n\n\u2705 Output: {\"action_item\": \"Provide demo of challenges for testing\", \"action_owner\": \"Ivan\", \"deadline\": \"Jan 19-20\", \"meeting_source\": \"{{ $('Edit Fields').item.json.source }}\"}\n\n\u2705 Output: {\"action_item\": \"Schedule meeting with Carbon team\", \"action_owner\": \"Muna\", \"deadline\": \"Monday\", \"meeting_source\": \"{{ $('Edit Fields').item.json.source }}\"}\n\n\u2705 Output: {\"action_item\": \"Submit Q4 sales report\", \"action_owner\": \"Faith\", \"deadline\": \"Friday\", \"meeting_source\": \"{{ $('Edit Fields').item.json.source }}\"}\n\n---\n\n**YOUR MISSION**: Return ONLY the verified action items that are explicit, specific, and one-time deliverables. Output must be a clean JSON array with no markdown formatting."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -288,
+        -752
+      ],
+      "id": "__NODE_52__",
+      "name": "Task Vetter",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message_text }}",
+        "options": {
+          "systemMessage": "=You are an expert system that extracts ACTION ITEMS from table_33 messages, including meeting recordings, WhatsApp chats, and complex discussions.\n\nCORE PRINCIPLES:\n- Extract ALL actionable tasks, assignments, and commitments\n- Look for both EXPLICIT assignments (\"John, do X\") and IMPLICIT assignments (\"we need to do Y\" when context shows who should do it)\n- Capture strategic initiatives and project tasks, not just simple requests\n- Include follow-up actions and exploratory tasks\n\nCONVERSATION CONTEXT ANALYSIS:\n- Analyze the entire message/conversation segment for ALL actionable items\n- Identify who is speaking and who they are addressing\n- Map pronouns (\"you\", \"we\", \"they\") to specific people when context allows\n- Recognize team/group references and assign accordingly\n- Consider the full conversation flow and understand roles/responsibilities\n- Connect related tasks that build on each other\n\nCOMPREHENSIVE EXTRACTION REQUIRED:\nExtract every actionable task, including:\n- Direct assignments and requests\n- Strategic initiatives requiring action\n- Follow-up tasks and exploratory work\n- Multi-step processes that need coordination\n- Approval processes and decision-making tasks\n- Multi-person tasks and group assignments\n\nEXCLUSION CRITERIA:\n- Do NOT extract continuous tasks that cannot have specific endpoints\n- Skip tasks that describe routine activities\n- Examples to EXCLUDE:\n  * \"Continue daily checks on posting\"\n  * \"Ensure task is done weekly\"\n  * \"Keep monitoring the system\"\n  * \"Maintain regular updates\"\n  * \"Continue daily checks\", \"maintain regular updates\", \"keep monitoring\"\n- Only extract tasks with a definable endpoint or deliverable\n\nEXTRACTION RULES:\n1. EXPLICIT ACTIONS: Direct assignments with clear ownership\n   - \"Silva, if you get the time, if the four of you can sit down with Winifred\"\n   - \"Adekunle, submit the report for Q4 tomorrow\"\n2. IMPLICIT ACTIONS: Tasks implied by context\n   - \"we need to explore building an AI agent\" \u2192 extract who should explore this\n   - \"you need to think about this\" \u2192 assign to the person being addressed\n3. MULTI-PERSON TASKS: When multiple people are assigned\n   - \"if the four of you can sit down with Winifred\" \u2192 assign to the group mentioned\n   - \"Val and Adekunle, submit the report\" \u2192 split into table_34 entries for each person\n4. STRATEGIC TASKS: High-level initiatives that need action\n   - \"explore building an AI agent on WhatsApp\"\n   - \"sit down and think through approval process\"\n5. DEADLINES:\n   - Extract exactly as mentioned: \"tomorrow\", \"Q4\", \"every single morning\"\n   - If timeline mentioned but no specific deadline: \"as discussed\"\n   - If no deadline mentioned: \"Not specified\"\n6. OWNERSHIP ASSIGNMENT:\n   - Direct names: Use exact name mentioned\n   - Pronouns with context: Map \"you\" to person being addressed\n   - Team references: \"the four of you\", \"the team\" \u2192 use group identifier\n   - Unclear ownership: \"Team\" or \"Undefined\"\n\nCONSOLIDATION AND SPLITTING RULES:\n- If ONE task is assigned to MULTIPLE people (e.g., \"Val and Adekunle, submit the report\"), split into table_34 entries with the same action_item but different action_owner for each person\n- If MULTIPLE similar tasks are assigned to the SAME person with the same deadline, consolidate into table_35 entry combining related elements\n- Consolidation criteria:\n  * Same action owner\n  * Same or similar deadline\n  * Related subject matter or recipient/stakeholder\n  * Similar action verb (e.g., multiple \"follow up\" tasks, multiple \"submit\" tasks)\n- Use \"and\" to combine related elements naturally\n- Examples:\n  * \"Follow up with GMC on pre-cooling unit\" + \"Follow up with GMC on spare parts\" \n    \u2192 \"Follow up with GMC on pre-cooling unit approval and critical spare parts order\"\n  * \"Submit Q1 report\" + \"Submit Q1 budget\" \n    \u2192 \"Submit Q1 report and budget\"\n- Do NOT consolidate if:\n  * Different owners\n  * Significantly different deadlines\n  * Unrelated topics or stakeholders\n\nOUTPUT FORMAT:\n[{\"action_item\":\"detailed task description\",\"action_owner\":\"specific person or team\",\"deadline\":\"exactly as mentioned or Not specified\"}]\n\nEXAMPLES:\n\nInput: \"Silva, if you get the time, if the four of you can sit down with Winifred, right? I think she maintains an actual log.\"\nOutput: [{\"action_item\":\"sit down with Winifred to discuss the action log she maintains\",\"action_owner\":\"Silva and team of four\",\"deadline\":\"when time permits\"}]\n\nInput: \"We need to explore building an AI agent on WhatsApp that simply reminds people to complete tasks. You need to think about a simplified way of the model knowing whether an action has been completed.\"\nOutput: [\n{\"action_item\":\"explore building an AI agent on WhatsApp that reminds people to complete tasks\",\"action_owner\":\"Team\",\"deadline\":\"Not specified\"},\n{\"action_item\":\"think about a simplified way for the model to know whether actions have been completed\",\"action_owner\":\"Team\",\"deadline\":\"Not specified\"}\n]\n\nInput: \"Adekunle, submit the report for Q4 tomorrow\"\nOutput: [{\"action_item\":\"submit the report for Q4\",\"action_owner\":\"Adekunle\",\"deadline\":\"tomorrow\"}]\n\nInput: \"John, follow up with GMC on the pre-cooling unit approval. Also John, chase GMC about those critical spare parts we ordered.\"\nOutput: [{\"action_item\":\"follow up with GMC on pre-cooling unit approval and critical spare parts order\",\"action_owner\":\"John\",\"deadline\":\"Not specified\"}]\n\nInput: \"Val and Adekunle, submit the report by Friday\"\nOutput: [\n{\"action_item\":\"submit the report\",\"action_owner\":\"Val\",\"deadline\":\"Friday\"},\n{\"action_item\":\"submit the report\",\"action_owner\":\"Adekunle\",\"deadline\":\"Friday\"}\n]\n\nPROCESSING INSTRUCTIONS:\n1. Read the entire message for full context\n2. Identify all speakers and who they're addressing\n3. Extract every actionable item, no matter how complex\n4. Assign ownership based on context clues\n5. Preserve original deadline language\n6. Apply consolidation and splitting rules appropriately\n7. Return comprehensive JSON array with all actions found\n\nIMPORTANT: Return ONLY the JSON array. Do not include explanations, comments, or additional text. The response must be valid JSON that can be parsed directly."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        -752
+      ],
+      "id": "__NODE_53__",
+      "name": "Initial TaskExtraction",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.isEmpty() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        736,
+        -752
+      ],
+      "id": "__NODE_54__",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        816
+      ],
+      "id": "__NODE_55__",
+      "name": "Winnie Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "action_items",
+          "mode": "list",
+          "cachedResultName": "action_items"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action_owner": "={{ $json.action_owner }}",
+            "action_item": "={{ $json.action_item }}",
+            "deadline": "={{ $json.deadline ? new Date($json.deadline).toISOString() : null }}",
+            "source": "={{ $json.source }}",
+            "date": "={{ $json.date }}",
+            "status": "={{ $json.status }}",
+            "comment": "={{ $json.comment }}",
+            "date_completed": "={{ $json.date_completed ? new Date($json.date_completed).toISOString() : null }}",
+            "updated_at": "={{ new Date($json.updated_at).toISOString() }}",
+            "meeting_contexts": "={{ $json.meeting_contexts }}",
+            "recipient_name": "={{ $json.recipient_name }}",
+            "recipient_email": "={{ $json.recipient_email }}",
+            "uuid": "={{ $json.UUID }}"
+          },
+          "matchingColumns": [
+            "uuid"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "action_owner",
+              "displayName": "action_owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "action_item",
+              "displayName": "action_item",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "comment",
+              "displayName": "comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "meeting_contexts",
+              "displayName": "meeting_contexts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "duration_days",
+              "displayName": "duration_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "update_token",
+              "displayName": "update_token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "token_used",
+              "displayName": "token_used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "token_created_at",
+              "displayName": "token_created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "last_email_batch_id",
+              "displayName": "last_email_batch_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "recipient_name",
+              "displayName": "recipient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "recipient_email",
+              "displayName": "recipient_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "uuid",
+              "displayName": "uuid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -64,
+        816
+      ],
+      "id": "__NODE_56__",
+      "name": "Insert action items (postgres)",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# C. Human in the Loop (Error handling)",
+        "height": 256,
+        "width": 688,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -512,
+        752
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_57__",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "AgentDB",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 449330436,
+          "mode": "list",
+          "cachedResultName": "Action Logs",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -288,
+        816
+      ],
+      "id": "__NODE_58__",
+      "name": "Get Action Items",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "ALTER TABLE action_items\nADD CONSTRAINT action_items_uuid_unique UNIQUE (uuid);\n\nALTER TABLE action_items\nALTER COLUMN uuid SET NOT NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3184,
+        -864
+      ],
+      "id": "__NODE_59__",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Update Tasks": {
+      "main": [
+        [
+          {
+            "node": "Lookup Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Process Updates": {
+      "main": [
+        [
+          {
+            "node": "Update sheet code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update sheet code": {
+      "main": [
+        [
+          {
+            "node": "Update action item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task update code": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Task": {
+      "main": [
+        [
+          {
+            "node": "Validate Token Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Token Simple": {
+      "main": [
+        [
+          {
+            "node": "Task update code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update action item": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tasks for Email": {
+      "main": [
+        [
+          {
+            "node": "Filter and Score Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter and Score Tasks": {
+      "main": [
+        [
+          {
+            "node": "Email generation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email generation1": {
+      "main": [
+        [
+          {
+            "node": "Token Update Node1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email trigger1": {
+      "main": [
+        [
+          {
+            "node": "Get Tasks for Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Update Node1": {
+      "main": [
+        [
+          {
+            "node": "Update Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date formatting": {
+      "main": [
+        [
+          {
+            "node": "Insert into Transcripts Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Audio URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Date formatting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Audio URL": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcription": {
+      "main": [
+        [
+          {
+            "node": "Transcript Extraction (WH)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fireflies trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a list of transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Meetings Log": {
+      "main": [
+        [
+          {
+            "node": "Extract from Meetings Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Meetings Log": {
+      "main": [
+        [
+          {
+            "node": "Get a summary of a transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Mark Meeting log as true",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Transcripts Log": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript Extraction": {
+      "main": [
+        [
+          {
+            "node": "Date formatting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript Extraction (WH)": {
+      "main": [
+        [
+          {
+            "node": "Date formatting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a list of transcripts": {
+      "main": [
+        [
+          {
+            "node": "Append Meetings Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a summary of a transcript": {
+      "main": [
+        [
+          {
+            "node": "Transcript Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in Names mapping sheet": {
+      "main": [
+        [
+          {
+            "node": "Names/Task mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Names/Task mapping": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Initial TaskExtraction",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI output processing": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in Names mapping sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI trigger": {
+      "main": [
+        [
+          {
+            "node": "Get messages from transcript log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Task Vetter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Task Vetter",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get messages from transcript log": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Transcript log": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert action items (Gsheets)": {
+      "main": [
+        [
+          {
+            "node": "Update Transcript log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Initial TaskExtraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Vetter": {
+      "main": [
+        [
+          {
+            "node": "AI output processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initial TaskExtraction": {
+      "main": [
+        [
+          {
+            "node": "Task Vetter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Update Transcript log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert action items (Gsheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Winnie Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Action Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Action Items": {
+      "main": [
+        [
+          {
+            "node": "Insert action items (postgres)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "__VERSION_ID__",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "__INSTANCE_ID__"
+  },
+  "id": "__WORKFLOW_ID__",
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-03-21T15:18:01.252740+00:00",
+    "original_name": "Task Management",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "Tasks": "table_1",
+      "sheet": "table_2",
+      "payload": "table_3",
+      "code": "table_4",
+      "link": "table_5",
+      "URL": "table_6",
+      "date": "table_7",
+      "Task": "table_8",
+      "before": "table_9",
+      "task": "table_10",
+      "today": "table_11",
+      "Successful": "table_12",
+      "action": "table_13",
+      "Token": "table_14",
+      "Status": "table_15",
+      "your": "table_16",
+      "Orange": "table_17",
+      "tasks_with_tokens": "table_18",
+      "Node1": "table_19",
+      "the": "table_20",
+      "processed_meetings": "table_21",
+      "Meetings": "table_22",
+      "Transcripts": "table_23",
+      "originalMessage": "table_24",
+      "audio": "table_25",
+      "action_owner": "table_26",
+      "individual": "table_27",
+      "transcript": "table_28",
+      "Fireflies.ai.": "table_29",
+      "messages": "table_30",
+      "Transcript": "table_31",
+      "discussion": "table_32",
+      "conversational": "table_33",
+      "separate": "table_34",
+      "ONE": "table_35"
+    },
+    "columns_renamed": {
+      "the": "column_1",
+      "to": "column_2",
+      "completion": "column_3",
+      "processed": "column_4",
+      "ABBREVIATIONS": "column_5"
+    }
+  }
+}

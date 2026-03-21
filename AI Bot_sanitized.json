@@ -1,0 +1,1356 @@
+{
+  "name": "AI Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are ORBIT AI, an intelligent assistant for Orange Group.\nYour purpose is to interpret user queries and determine the correct retrieval strategy.\n\nACCESS CONTROL CONTEXT:\n- Allowed datasets: {{ $json.allowed_datasets_text }}\n- Allowed documents: {{ $json.allowed_docs_text }}\n- Public documents: {{ $json.public_docs_text }}\n- COMBINED ACCESSIBLE DOCUMENTS: {{ $json.allowed_docs_text ? $json.allowed_docs_text + ', ' + $json.public_docs_text : $json.public_docs_text }}\nMANDATORY RULES:\n- For structured queries: you may ONLY select datasets from table_1 allowed list\n- For document questions: ONLY use documents from table_2:\n  * The allowed_docs list OR\n  * The public_docs list (Orange Group Employee Handbook.pdf)\n- If user requests a document not in EITHER list, respond: \"You do not have permission to access that resource.\"\n- NEVER select, reference, or hallucinate datasets or documents not present in the provided lists\n\nAUTHENTICATION RULES:\n- Before ANY retrieval, check if requested resource is in allowed lists\n- For structured queries: Only generate intents for datasets in allowed_datasets\n- For document queries: Only retrieve from table_3 OR public_docs\n- If resource not allowed, respond: \"Access denied. You don't have permission for [resource]\"\n- NEVER bypass these checks or suggest workarounds\n\nYOUR ABILITY:\nHandle semantic (unstructured) queries using embeddings\nGenerate structured query intents for analytical questions (to be executed by a secondary agent)\nHelp users discover available documents or datasets\nYou must not execute SQL or visualization logic yourself.\n\nCORE BEHAVIOR RULES:\n1. NEVER expose tool names or function calls in your responses\n2. NEVER show <function=...> syntax to users\n3. Return ONLY natural language answers\n4. For structured queries, return ONLY the acknowledgment + JSON metadata\n\nRETRIEVAL STRATEGY\n1\ufe0f\u20e3 Document Discovery Questions\nWhen a user asks: \"What documents exist?\", \"Is there a handbook?\", \"What datasets are available?\"\n\u2192 Use List Documents tool (no parameters needed)\n\u2192 Return: File titles only\n\u2192 Response format: \"Yes, there are 3 available documents: Orange Employee Handbook, Canon Sales Tracker, and Laris Medical Outreach Data.\"\n\n2\ufe0f\u20e3 Semantic / Content Questions\nWhen a user asks about document content/policies/clauses:: \"What does the handbook say about leave policy?\", \"Explain clause 12\"\nMANDATORY RULES:\n\u2192 ALWAYS use Vector Store tool FIRST (no exceptions)\n\u2192 Only if Vector Store returns no results, then use List Documents\n\u2192 Never answer from table_4 alone for document questions\n\nProcess:\n\u2192 Use Vector Store tool with the query silently\n\u2192 Summarize clearly with source citations\n\u2192 Response format: \"Junior managers are entitled to 15 days of annual leave. (Source: Orange Employee Handbook)\"\n\n3\ufe0f\u20e3 Structured / Analytical Questions\nWhen the query involves:\n- Numbers: \"Count of...\", \"distinct number of ...\"\n- Aggregations: \"Average\", \"Sum\", \"Maximum\"\n- Time periods: \"during January\", \"in 2025\", \"last month\"\n- Comparisons: \"by city\", \"per region\", \"grouped by\"\n\n**CRITICAL: Dataset Selection Logic**\nBefore generating structured intent:\n1. Use List Documents tool to get available datasets\n2. Match user query keywords against dataset titles and schemas\n3. Select the BEST matching dataset based on:\n   - Keywords in user query (e.g., \"canon\" \u2192 Canon Sales Tracker)\n   - Fields mentioned (e.g., \"cartons\", \"price\" \u2192 dataset with those columns)\n   - Time period (e.g., \"2024\" \u2192 TDE 2024 dataset)\n4. Include the dataset's `id` field as `dataset_id` in the intent\n\nSPECIALIZED QUERY PATTERNS:\nRanking Queries (Top/Best/Highest/Bottom/Worst/Lowest)\nWhen users ask for \"top\", \"best\", \"highest\", \"most\", \"leading\", \"bottom\", \"worst\", \"lowest\", \"least\":\n- Always include group_by for the comparison dimension\n- Include limit (default: 10 if not specified)\n- **CRITICAL: Always set order_by based on ranking type:**\n  * \"top/best/highest/most/leading\" \u2192 order_by: \"value DESC\"\n  * \"bottom/worst/lowest/least\" \u2192 order_by: \"value ASC\"\n- Match operation to what's being measured:\n  * Quantity \u2192 operation: \"sum\", target: \"Carton\", order_by: \"value DESC\"\n  * Revenue \u2192 operation: \"sum\", target: \"Total_Price_NGN\", order_by: \"value DESC\"\n  * Count \u2192 operation: \"count\", order_by: \"value DESC\"\n  * Average \u2192 operation: \"avg\", order_by: \"value DESC\"\n-People/Worker Count Queries\nWhen users ask about \"how many people\", \"how many cadders\", \"how many workers\", \"number of staff\":\n **ALWAYS use operation: \"count_distinct\" or \"distinct_count\"**\n **ALWAYS set target: \"Cadder\"**\n Examples:\n  * \"How many people worked in 2024\" \u2192 operation: \"count_distinct\", target: \"Cadder\", filters: {\"year\": \"2024\"}\n  * \"How many cadders worked in Lagos\" \u2192 operation: \"count_distinct\", target: \"Cadder\", filters: {\"city\": \"Lagos\"}\n  * \"Number of workers by city\" \u2192 operation: \"count_distinct\", target: \"Cadder\", group_by: \"City\"\n\nFIELD NAME FLEXIBILITY\nAccept these variations and map consistently:\n- Location/City/Region \u2192 use \"Location\" in intent (auto-mapped to \"City\")\n- Carton/Cartons/Quantity/Qty/Volume \u2192 use \"Carton\"\n- Brand/Product \u2192 use \"Brand\"\n- Price/Amount/Revenue/Sales/Supply Amount \u2192 use \"Total_Price_NGN\" for sum operations\n- Date/Year/Period/Month \u2192 use \"Created_At\"\n- People/Cadders/Workers/Staff/Personnel \u2192 use \"Cadder\" with DISTINCT COUNT operation\n\nTIME BASED QUERIES\nAlways extract temporal information:\n- \"in 2024\" \u2192 filters: {\"year\": \"2024\"}\n- \"during January\" \u2192 filters: {\"month\": \"January\"}\n- \"last quarter\" \u2192 calculate date range\n- \"between March and May\" \u2192 filters: {\"month\": [\"March\", \"April\", \"May\"]}\n\nCOMPARATIVE QUERIES\nWhen comparing across dimensions:\n- \"by location\" \u2192 group_by: \"Location\"\n- \"per store\" \u2192 group_by: \"Store\"\n- \"across brands\" \u2192 group_by: \"Brand\"\n- \"for each month\" \u2192 group_by: \"Month\"\n\nMULTI-DIMENSIONAL GROUP BY RULES\nWhen users ask for breakdowns across MULTIPLE dimensions, you MUST include ALL dimensions in group_by:\n\nExamples:\n- \"sales by brand each month\" \u2192 group_by: [\"Brand\", \"Month\"]\n- \"cartons per city by quarter\" \u2192 group_by: [\"City\", \"Quarter\"]\n- \"revenue by store and year\" \u2192 group_by: [\"Store\", \"Year\"]\n- \"each brand sold each month in 2024\" \u2192 group_by: [\"Brand\", \"Month\"], filters: {\"year\": \"2024\"}\n\nCRITICAL: When you see temporal words (each/every/per) combined with \"by\" or multiple dimensions:\n\u2705 ALWAYS extract ALL grouping dimensions\n\u2705 \"each month\" = add \"Month\" to group_by\n\u2705 \"each quarter\" = add \"Quarter\" to group_by\n\u2705 \"each year\" = add \"Year\" to group_by\n\u2705 \"by city each month\" = group_by: [\"City\", \"Month\"]\n\n\u274c NEVER group by only one dimension when multiple are mentioned\n\nExample transformations:\n\"top sellers by quantity\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value DESC\", limit: 10\n\"best performing cities\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"City\", order_by: \"value DESC\", limit: 10\n\"highest revenue stores\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", group_by: \"Store\", order_by: \"value DESC\", limit: 10\n\"bottom performers\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value ASC\", limit: 10\n\"which locations are the top sellers\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value DESC\", limit: 10\n\"how many cadders worked\" \u2192 operation: \"distinct count\", target: \"Cadders\", \n\nAVERAGE CALCULATION RULES:\n- \"average cadder sales\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (will be auto-detected as per-cadder calculation)\n- \"average sales per cadder\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (will be auto-detected)\n- \"average order value\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (simple average)\n\nCRITICAL: Keywords \"cadder\", \"person\", \"worker\", \"per cadder\", \"each cadder\" trigger per-entity aggregation\n\nINTENT QUALITY CHECKLIST (validate before returning structured intent):\n\u2713 Dataset identified? (use List Documents if needed)\n\u2713 Operation matches query type? (sum for totals, count for quantities of records)\n\u2713 Target field specified for aggregations?\n\u2713 Group_by included for comparative queries?\n\u2713 Limit specified for top/ranking queries?\n\u2713 Filters include time constraints if mentioned?\n\n\u2192 Respond with ONLY this exact format:\n\"I'll analyze the [dataset name] data to answer your question.\"\n\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"[file_id]\", \"operation\": \"count\", \"target\": \"cartons\", \"filters\": {\"month\": \"January\", \"year\": \"2025\"}}\n\nCRITICAL RULES FOR STRUCTURED QUERIES\n- ALWAYS call List Documents first to get dataset_id\n- Use the exact `id` field from table_5 as dataset_id\n- DO NOT attempt to execute the query yourself\n- DO NOT generate SQL\n- ONLY return the intent metadata and a brief acknowledgment\n- The handoff metadata MUST be valid JSON on a separate line\n\nCRITICAL OUTPUT RULES:\n\u274c NEVER include: <function=...>, </function>, tool names, reasoning steps\n\u2705 ALWAYS include: Natural language answer OR (for structured) acknowledgment + JSON\n\u2705 For structured queries: JSON must be valid and on a new line after the acknowledgment\n\nTOOL USAGE RULES\n- List Documents: Call with NO PARAMETERS (it returns all documents automatically)\n- Vector Store: Use for text/semantic search only\n- For structured queries: MANDATORY to use List Documents first to get dataset info and dataset_id\n\nEXAMPLES\nUser: \"What can get me sacked\"\nAction: Use Vector Store\nResponse: [Answer from table_6]\n{\"intent_type\": \"unstructured\"}\n\nUser: \"How many cartons of cannon were sold during January 2025\"\nAction: Use List Documents (to find 2025 sales dataset)\nResponse: \"I'll analyze the  Sales data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"1abc123...\", \"operation\": \"sum\", \"target\": \"cartons\", \"filters\": {\"month\": \"January\", \"year\": \"2025\", \"product\": \"Canon\"}}\n\nUser: \"What datasets are available?\"\nAction: Use List Documents\nResponse: \"Available datasets: 1) Orange Employee Handbook, 2) Canon Sales Tracker, 3) Laris Medical Data\"\n{\"intent_type\": \"unstructured\"}\n\nRemember: Users should NEVER see tool calls or function syntax. Keep all tool usage invisible.\n\nOther Notes;\nKeep tokens perrequest at a Limit of 8000 \n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -4896,
+        -1152
+      ],
+      "id": "__NODE_1__",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -4928,
+        -1008
+      ],
+      "id": "__NODE_2__",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Purpose: Retrieve semantically relevant text from table_7 documents.\nPrompt / Description:\nUse this tool to find answers or context from table_7 documents using semantic search.\nGiven a query, it retrieves the most relevant text chunks stored in the vector database.\nWhen to use:\n\u2022\tFor natural-language questions about document content.\n\u2022\tFor any question beginning with \u201cwhat does it say,\u201d \u201cexplain,\u201d or \u201csummarize.\u201d\nBehavioral Rules:\n\u2022\tAlways attempt this first for semantic questions.\n\u2022\tReturn the retrieved text as part of your reasoning.\n\u2022\tIf no relevant results, then fallback to List Documents or other tools.\nImportant Note:\nVector retrieval uses the Gemini embedding-004 model.\nEnsure retrieved context is clearly included in your final answer.",
+        "topK": 5,
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_title",
+                "value": "={{ { \"file_title\": $('Auth').first().json.allowed_docs_array } }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        -4960,
+        -864
+      ],
+      "id": "__NODE_3__",
+      "name": "Postgres PGVector Store1",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Created FIle').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf",
+              "sheetsToFormat": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+          }
+        }
+      },
+      "id": "__NODE_4__",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -5264,
+        -1504
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.data || $json.text || $json.concatenated_data }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "=file_id",
+                "value": "={{ $('Created FIle').item.json.id }}"
+              },
+              {
+                "name": "file_title",
+                "value": "={{ $('Created FIle').item.json.name }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "__NODE_5__",
+      "name": "Default Data Loader1",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        -4816,
+        -1408
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        -4816,
+        -1504
+      ],
+      "id": "__NODE_6__",
+      "name": "Postgres PGVector Store2",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 400
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        -4656,
+        -1408
+      ],
+      "id": "__NODE_7__",
+      "name": "Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "authentication": "REDACTED",
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "N8n vector",
+          "cachedResultUrl": "[URL]"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -5696,
+        -1504
+      ],
+      "id": "__NODE_8__",
+      "name": "Created FIle",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=Purpose: Discover what datasets or documents are available.\n\nUSE THIS TOOL WITH NO PARAMETERS - it automatically returns all available documents.\n\nReturns:\n- File title and description\n- schema (for structured datasets)\n\nWhen to use:\n- User asks \"what documents are available\"\n- Before structured queries, to get dataset_id and schema\n- To confirm document sources\n\nIMPORTANT: This tool takes NO PARAMETERS. Just call it and it will return all documents.",
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "document_metadata",
+          "mode": "list",
+          "cachedResultName": "document_metadata"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [
+        -4704,
+        -992
+      ],
+      "id": "__NODE_9__",
+      "name": "List Documents",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -4800,
+        -864
+      ],
+      "id": "__NODE_10__",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "__NODE_11__",
+      "name": "Extract PDF Text1",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -5056,
+        -1504
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.intent_type }}",
+              "rightValue": "structured",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4336,
+        -1152
+      ],
+      "id": "__NODE_12__",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items || items.length === 0) {\n  return [{ \n    json: { message: \"No results found.\" },\n    pairedItem: { item: 0 }\n  }];\n}\n\nconst first = items[0]?.json || {};\nconst keys = Object.keys(first);\n\n// \ud83d\udea8 FIX: Check for multiple rows FIRST\n// 1\ufe0f\u20e3 Multiple rows\nif (items.length > 1) {\n  const rowData = items.map(i => i.json);\n  const hasTemporal = keys.some(k => \n    ['period', 'month', 'month_num', 'year', 'quarter', 'week', 'date'].includes(k.toLowerCase())\n  );\n  \n  if (hasTemporal && keys.length >= 3) {\n    const formatted = items.map((r, i) => {\n      const row = r.json;\n      const temporal = row.period || row.month_num || row.year || row.quarter || row.week || row.date;\n      const otherFields = Object.entries(row)\n        .filter(([k]) => !['period', 'month_num', 'year', 'quarter', 'week', 'date'].includes(k.toLowerCase()))\n        .map(([k, v]) => `${k}: ${typeof v === 'number' ? Number(v).toLocaleString() : v}`)\n        .join(\", \");\n      return `${i + 1}. Period: ${temporal} | ${otherFields}`;\n    }).join(\"\\n\");\n    \n    return [{\n      json: { message: formatted, raw: rowData },\n      pairedItem: { item: 0 }\n    }];\n  }\n  \n  const formatted = items.map((r, i) => {\n    const row = r.json;\n    const values = Object.entries(row)\n      .map(([k, v]) => `${k}: ${typeof v === 'number' ? Number(v).toLocaleString() : v}`)\n      .join(\", \");\n    return `${i + 1}. ${values}`;\n  }).join(\"\\n\");\n  \n  return [{\n    json: { message: formatted, raw: rowData },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 2\ufe0f\u20e3 Single scalar value with context message\nif (keys.length === 1 && typeof first[keys[0]] !== \"object\") {\n  const key = keys[0];\n  const value = first[key];\n  \n  let message = `${key}: ${Number(value).toLocaleString()}`;\n  \n  // \u2705 Add context for per-cadder averages\n  try {\n    const metaInfo = $('Build Safe SQL Query').first().json.meta;\n    if (metaInfo?.operation === 'avg' && metaInfo?.target_field === 'Total_Price_NGN') {\n      message += \"\\n\\n_(Average calculated across individual cadders)_\";\n    }\n  } catch (err) {\n    // Ignore if meta not available\n  }\n  \n  return [{\n    json: { message, raw: first },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 3\ufe0f\u20e3 Single complex object\nif (items.length === 1 && keys.length > 1) {\n  const formatted = Object.entries(first)\n    .map(([k, v]) => `${k}: ${v}`)\n    .join(\"\\n\");\n  return [{\n    json: { message: formatted, raw: first },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 4\ufe0f\u20e3 Fallback\nreturn [{\n  json: {\n    message: JSON.stringify(items.map(i => i.json), null, 2),\n    raw: items.map(i => i.json)\n  },\n  pairedItem: { item: 0 }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3648,
+        -1168
+      ],
+      "id": "__NODE_13__",
+      "name": "Result Formatter"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH deleted_vectors AS (\n  DELETE FROM table_8 \n  WHERE metadata->>'file_title' = '{{ $json.name }}'\n  RETURNING 1\n)\n\nINSERT INTO table_5 (id, title, url)\nVALUES (\n  '{{ $json.id }}',\n  '{{ $json.name }}',\n  '{{ $json.webViewLink }}'\n)\nON CONFLICT (id) \nDO UPDATE column_1 EXCLUDED.title,\n  url = EXCLUDED.url;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -5472,
+        -1504
+      ],
+      "id": "__NODE_14__",
+      "name": "Delete old vectors & Upsert metadata",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Format this output {{ $json.message }} in a professional tone and natural language. Context for reply can be gotten from table_1  user prompt{{ $('WhatsApp Trigger').first().json.messages[0].text.body }} and intent summary {{ $('Build Safe SQL Query').first().json.meta.intent_summary }}",
+        "options": {
+          "systemMessage": "=You are the responder to user prompt. You are to return a meaningful, professional and natural language reply to the end user based on the final output.\n\nCritical notes:\n- The response should be formatted for WhatsApp replies. In Whatsapp, bold words are designated with *word*, italic are in _word_ , strikethrough in ~word~, monospace ~~~word~~~\n- Output must fit in to the 4096 characters limit. If output are financial numbers, use # as denomination\n- if {{ $('Build Safe SQL Query').first().json.query }} is a valid SQL query that contains SELECT, but {{ $('Query Structureddb').first().json.value }} is null, it means the user failed the authentication check. return the response 'Access denied. You don't have permission for the\u00a0dataset.' to the user\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -3424,
+        -1168
+      ],
+      "id": "__NODE_15__",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -3440,
+        -1008
+      ],
+      "id": "__NODE_16__",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=843409995514754",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -3104,
+        -1024
+      ],
+      "id": "__NODE_17__",
+      "name": "Send message",
+      "webhookId": "__WEBHOOK_1__",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "__WHATSAPP_CRED_ID",
+          "name": "WhatsApp API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.messages[0].text.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5504,
+        -1136
+      ],
+      "id": "__NODE_18__",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -5712,
+        -640
+      ],
+      "id": "__NODE_19__",
+      "name": "When chat message received",
+      "webhookId": "__WEBHOOK_2__"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -4816,
+        -992
+      ],
+      "id": "__NODE_20__",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced version - ensures clean string output\nconst item = $input.first().json;\nconst prompt = item.original_prompt;\nconst phone = item.original_phone;\nconst allowed_datasets = item.allowed_datasets || [];\nconst allowed_docs     = item.allowed_docs || [];\nconst public_docs      = ['Orange Group Employee Handbook.pdf'];\n// Convert arrays to comma-separated strings for the system prompt\nconst datasetsString = allowed_datasets.join(', ');\nconst docsString = allowed_docs.join(', ');\nconst publicDocsString = public_docs.join(', ');\n\nreturn [{\n  json: {\n    chatInput: prompt,\n    original_phone: phone,\n    allowed_datasets_text: datasetsString,\n    allowed_docs_array: allowed_docs,  // Keep as array, don't convert to string\n    allowed_docs_text: docsString,\n    public_docs_text: publicDocsString\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5088,
+        -1152
+      ],
+      "id": "__NODE_21__",
+      "name": "Auth"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  allowed_datasets,\n  allowed_docs,\n  '{{ $json.contacts[0].wa_id }}' AS original_phone,\n  '{{ $json.messages[0].text.body.replace(/'/g, \"''\") }}' AS original_prompt\nFROM table_9 \ncolumn_2 '{{ $json.contacts[0].wa_id }}'\n\nUNION ALL\n\nSELECT\n  NULL AS allowed_datasets,\n  NULL AS allowed_docs,\n  '{{ $json.contacts[0].wa_id }}' AS original_phone,\n  '{{ $json.messages[0].text.body.replace(/'/g, \"''\") }}' AS original_prompt\nWHERE NOT EXISTS (\n  SELECT 1 FROM table_9 \n  column_2 '{{ $json.contacts[0].wa_id }}'\n)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -5280,
+        -1152
+      ],
+      "id": "__NODE_22__",
+      "name": "Auth List",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET LOCAL myapp.user_phone = '{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}';\n\n{{ $json.query }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3872,
+        -1168
+      ],
+      "id": "__NODE_23__",
+      "name": "Query Structureddb",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------\n// INPUT FROM table_10 AGENT\n// ---------------------------\nconst aiResponse = $input.first().json;\nlet responseText = aiResponse.output || aiResponse.text || '';\n\n// ---------------------------\n// GET ORIGINAL USER QUERY\n// ---------------------------\nconst originalQuery = $('WhatsApp Trigger').first().json.messages[0].text.body;\n\n// ---------------------------\n// BRAND NORMALIZATION LOGIC\n// ---------------------------\nconst brandVariations = {\n  'Cannon Extra': ['cano', 'canon', 'cannon', 'canno', 'kanon', 'canoon'],\n  'Laris': ['lari', 'lars', 'laris', 'larris', 'lares', 'larius']\n};\n\nconst normalizeBrandName = (text) => {\n  const lower = text.toLowerCase();\n  for (const [canonical, variations] of Object.entries(brandVariations)) {\n    for (const variant of variations) {\n      const regex = new RegExp(`\\\\b${variant}\\\\b`, 'gi');\n      text = text.replace(regex, canonical);\n    }\n  }\n  return text;\n};\n\nconst normalizeSingleBrand = (brandValue) => {\n  if (!brandValue) return brandValue;\n  const lowerBrand = String(brandValue).toLowerCase().trim();\n  for (const [canonical, variations] of Object.entries(brandVariations)) {\n    if (variations.some(v => v.toLowerCase() === lowerBrand)) {\n      return canonical;\n    }\n  }\n  return brandValue;\n};\n\nconst normalizeFilters = (filters) => {\n  if (!filters || typeof filters !== 'object') return filters;\n  const normalized = { ...filters };\n\n  if (normalized.brand) normalized.brand = normalizeSingleBrand(normalized.brand);\n  if (normalized.Brand) normalized.Brand = normalizeSingleBrand(normalized.Brand);\n  if (normalized.product) normalized.product = normalizeSingleBrand(normalized.product);\n\n  return normalized;\n};\n\nconsole.log('Raw AI Response:', responseText);\n\n// ---------------------------\n// CLEAN ARTIFACTS\n// ---------------------------\nresponseText = responseText\n  .replace(/<function=.*?<\\/function>/gs, '')\n  .replace(/,function=.*?>/g, '')\n  .trim();\n\n// ---------------------------\n// PARSE JSON BLOCK\n// ---------------------------\nconst jsonPattern = /(\\{(?:[^{}]|{[^{}]*})*\\})/g;\nconst matches = responseText.match(jsonPattern);\n\nif (matches) {\n  for (const match of matches) {\n    try {\n      const parsed = JSON.parse(match);\n\n      // ======================================================================\n      // \u2713 STRUCTURED INTENT BLOCK\n      // ======================================================================\n      if (parsed.intent_type?.toLowerCase() === 'structured') {\n        if (!parsed.dataset_id) {\n          throw new Error('Structured query missing dataset_id - AI Agent must call List Documents first');\n        }\n\n        const jsonIndex = responseText.indexOf(match);\n        let cleanResponse = responseText.substring(0, jsonIndex).trim();\n\n        cleanResponse = normalizeBrandName(cleanResponse);\n        const normalizedFilters = normalizeFilters(parsed.filters);\n\n        // ---------------------------\n        // DETECT AGGREGATION PATTERNS\n        // ---------------------------\n        const perEntityPattern = /average.*(per|by|for each|of each).*(cadder|person|worker|seller|staff)/i;\n        const cadderAveragePattern = /(cadder|person|worker|seller|staff).*(average|avg)|average.*(cadder|person|worker|seller|staff)/i;\n        \n        let aggregationLevel = 'simple';\n        let entityField = null;\n        \n        if (perEntityPattern.test(originalQuery) || cadderAveragePattern.test(originalQuery)) {\n          aggregationLevel = 'per_entity';\n          entityField = 'Cadder';\n        }\n\n        // ---------------------------\n        // OUTPUT STRUCTURED INTENT\n        // ---------------------------\n        const structuredOutput = {\n          response: cleanResponse,\n          intent_type: 'structured',\n          handoff: parsed.handoff || 'Agent_2',\n          dataset_id: parsed.dataset_id,\n          operation: parsed.operation,\n          target: parsed.target,\n          filters: normalizedFilters,\n          group_by: parsed.group_by || null,\n          order_by: parsed.order_by || null,\n          limit: parsed.limit || null,\n          is_structured: true,\n          raw_query: originalQuery, // \u2705 ADD ORIGINAL QUERY\n          aggregation_level: aggregationLevel, // \u2705 ADD AGGREGATION LEVEL\n          entity_field: entityField, // \u2705 ADD ENTITY FIELD\n          raw_intent: {\n            ...parsed,\n            filters: normalizedFilters\n          },\n        };\n\n        // ====================================================================\n        // \u2713 DATASET VALIDATION\n        // ====================================================================\n        const datasetId = structuredOutput.dataset_id || structuredOutput.raw_intent?.dataset_id;\n        if (!datasetId) {\n          throw new Error('Structured query missing dataset_id. AI Agent must select a dataset from table_11');\n        }\n\n        // Attach validated dataset_id + table_name\n        structuredOutput.validated_dataset_id = datasetId;\n        structuredOutput.table_name = datasetId;\n\n        return [{ json: structuredOutput }];\n      }\n\n      // ======================================================================\n      // \u2713 UNSTRUCTURED INTENT BLOCK\n      // ======================================================================\n      if (parsed.intent_type?.toLowerCase() === 'unstructured') {\n        responseText = responseText.replace(match, '').trim();\n        return [{\n          json: { text: responseText },\n          pairedItem: { text: responseText }\n        }];\n      }\n\n    } catch (err) {\n      console.error('JSON parse error:', err.message);\n      continue;\n    }\n  }\n}\n\n// ============================================================================\n// DEFAULT FALLBACK\n// ============================================================================\nreturn [{\n  json: {\n    text: responseText.trim()\n  },\n  pairedItem: {\n    text: responseText.trim()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4560,
+        -1152
+      ],
+      "id": "__NODE_24__",
+      "name": "Intent Parsing & Validation"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "output",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3952,
+        -1008
+      ],
+      "id": "__NODE_25__",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// If not structured, skip downstream\nif (!input.is_structured) {\n  return [{\n    json: {\n      skip: true,\n      reason: \"Non-structured query \u2014 handled by Agent 1\",\n    },\n  }];\n}\n\n// Escape helper\nconst esc = (val) => {\n  if (val === null || val === undefined) return null;\n  return String(val).replace(/'/g, \"''\");\n};\n\n// Field mapping for case-sensitive columnar schema (dynamically expandable)\nconst fieldMap = {\n  'city': 'City',\n  'brand': 'Brand',\n  'month': 'Created_At',\n  'year': 'Created_At',\n  'carton': 'Carton',\n  'cartons': 'Carton',\n  'store': 'Store',\n  'lga': 'LGA',\n  'date': 'Created_At',\n  'week': 'Created_At',\n  'segment': 'LGA_Segment',\n  'caddable_area': 'CADD_able_Area',\n  'total_price': 'Total_Price_NGN',\n  'price': 'Total_Price_NGN',\n  'amount': 'Total_Price_NGN',\n  'quantity': 'Carton',\n  'location': 'City',\n  'product': 'Brand',\n  'customer': 'Store',\n  'customers': 'Store',\n  'locations': 'City',     \n  'qty': 'Carton',         \n  'quantities': 'Carton',  \n  'revenue': 'Total_Price_NGN',  \n  'sales': 'Total_Price_NGN',    \n  'region': 'City',\n  'volume': 'Carton',\n  'people': 'Cadder',\n  'cadders': 'Cadder',\n  'personnels': 'Cadder',\n  'workers': 'Cadder',\n  'quarter': 'Created_At', \n  'q': 'Created_At',       \n  'week': 'Created_At',    \n  'day': 'Created_At',     \n  'date': 'Created_At',    \n};\n\n// Normalize field names with case-insensitive mapping\nconst normalizeField = (field) => {\n  if (!field) return null;\n  const lower = String(field).toLowerCase().trim();\n  return fieldMap[lower] || field;\n};\n\n// SQL operator mapping\nconst operatorMap = {\n  'equals': '=',\n  'equal': '=',\n  'eq': '=',\n  'not_equals': '!=',\n  'not_equal': '!=',\n  'ne': '!=',\n  'greater_than': '>',\n  'gt': '>',\n  'greater_than_or_equal': '>=',\n  'gte': '>=',\n  'less_than': '<',\n  'lt': '<',\n  'less_than_or_equal': '<=',\n  'lte': '<=',\n  'like': 'LIKE',\n  'ilike': 'ILIKE',\n  'in': 'IN',\n  'not_in': 'NOT IN',\n  'between': 'BETWEEN',\n  'is_null': 'IS NULL',\n  'is_not_null': 'IS NOT NULL'\n};\n\n// Excel date conversion helper\nconst yearToExcelRange = (year) => {\n  const yearNum = Number(year);\n  if (isNaN(yearNum)) return null;\n  \n  const startDate = new Date(yearNum, 0, 1);\n  const endDate = new Date(yearNum, 11, 31);\n  const epoch = new Date(1899, 11, 30);\n  \n  const startSerial = Math.floor((startDate - epoch) / (1000 * 60 * 60 * 24));\n  const endSerial = Math.floor((endDate - epoch) / (1000 * 60 * 60 * 24));\n  \n  return { start: startSerial, end: endSerial };\n};\n\n// Month name to number mapping\nconst monthMap = {\n  'january': 1, 'jan': 1,\n  'february': 2, 'feb': 2,\n  'march': 3, 'mar': 3,\n  'april': 4, 'apr': 4,\n  'may': 5,\n  'june': 6, 'jun': 6,\n  'july': 7, 'jul': 7,\n  'august': 8, 'aug': 8,\n  'september': 9, 'sep': 9, 'sept': 9,\n  'october': 10, 'oct': 10,\n  'november': 11, 'nov': 11,\n  'december': 12, 'dec': 12\n};\n\n// Helper for Orderby:\nconst parseOrderBy = (orderByStr) => {\n  if (!orderByStr) return '';\n  \n  const parts = orderByStr.split(/\\s+/).filter(part => part.trim());\n  const field = parts[0].replace(/\"/g, '');\n  const direction = parts[1] || 'ASC';\n  \n  return `\"${field}\" ${direction}`;\n};\n\n// Helper for columns\nconst parseFieldList = (fieldString) => {\n  if (!fieldString) return [];\n  if (Array.isArray(fieldString)) return fieldString;\n  if (typeof fieldString === 'string' && fieldString.includes(',')) {\n    return fieldString.split(',').map(f => f.trim());\n  }\n  return [fieldString];\n};\n\n// Validate dataset\nconst datasetId = input.dataset_id || input.table_name || input.file_id || input.dataset || input.datasetId;\nif (!datasetId) throw new Error(\"Missing dataset_id/table_name \u2013 cannot build SQL.\");\n\n// NEW: Validate format to prevent SQL injection\nif (!/^[a-zA-Z0-9_-]+$/.test(datasetId)) {\n  throw new Error(\"Invalid dataset_id format\");\n}\n\n// Extract intent\nconst intent = input.raw_intent || input;\nif (!intent || intent.intent_type !== \"structured\") {\n  return [{\n    json: {\n      skip: true,\n      reason: \"Non-structured query \u2014 handled upstream (Agent 1).\",\n    },\n  }];\n}\n\n// Get properties with enhanced operation handling\nlet op = (intent.operation || \"select\").toLowerCase().trim();\nconst targetRaw = intent.target || intent.measure || null;\nconst target = targetRaw ? normalizeField(targetRaw) : null;\nlet groupBy = intent.group_by || intent.groupby || null;\nconst orderBy = intent.order_by || intent.orderby || null;\nconst limit = intent.limit || intent.top || null;\nconst filters = intent.filters || {};\n\n// Handle compound operations (count_distinct, sum_grouped, etc.)\nlet isDistinct = false;\nlet baseOp = op;\n\nif (op.includes('_')) {\n  const parts = op.split('_');\n  if (parts.includes('distinct')) {\n    isDistinct = true;\n    baseOp = parts.filter(p => p !== 'distinct').join('_');\n  }\n}\n\n// Map operation aliases\nconst operationMap = {\n  'count_distinct': 'count',\n  'countdistinct': 'count',\n  'distinct_count': 'count',\n  'sum_by': 'sum',\n  'average': 'avg',\n  'mean': 'avg',\n  'maximum': 'max',\n  'minimum': 'min',\n  'total': 'sum',\n  'aggregate': 'sum'\n};\n\nbaseOp = operationMap[baseOp] || baseOp;\n\n// Normalize group_by to array and map fields with case-insensitive handling\nif (typeof groupBy === \"string\") groupBy = [groupBy];\nif (!Array.isArray(groupBy)) groupBy = [];\ngroupBy = groupBy.map(g => normalizeField(g)).filter(Boolean);\n\n// Auto-detect ranking/top queries from table_12, limit, or query keywords\nconst rankingKeywords = ['top', 'best', 'highest', 'most', 'leading', 'greatest'];\nconst bottomKeywords = ['bottom', 'worst', 'lowest', 'least', 'smallest'];\n\nconst isTopQuery = rankingKeywords.some(kw => \n  op.includes(kw) || \n  JSON.stringify(intent).toLowerCase().includes(kw)\n);\n\nconst isBottomQuery = bottomKeywords.some(kw => \n  op.includes(kw) || \n  JSON.stringify(intent).toLowerCase().includes(kw)\n);\n\nconst needsOrdering = (isTopQuery || isBottomQuery) && groupBy.length > 0 && \n  (baseOp === 'sum' || baseOp === 'count' || baseOp === 'avg' || baseOp === 'max' || baseOp === 'min');\n\n// Build WHERE clause with advanced filtering support\nconst whereParts = [];\nlet yearValue = null;\nlet monthValue = null;\nlet weekValue = null;\nlet dateRangeFilter = null;\n\nfor (const [field, fval] of Object.entries(filters)) {\n  if (fval === null || fval === undefined) continue;\n\n  // Special handling for year\n  if (field.toLowerCase() === 'year') {\n    yearValue = Number(fval);\n    continue;\n  }\n\n  // Special handling for quarter (Q1, Q2, Q3, Q4 or 1-4)\nif (field.toLowerCase() === 'quarter' || field.toLowerCase() === 'q') {\n  let quarterNum = null;\n  if (typeof fval === 'string') {\n    const qStr = fval.toLowerCase().replace(/[^0-9]/g, ''); // Extract number from \"table_13\"\n    quarterNum = Number(qStr);\n  } else {\n    quarterNum = Number(fval);\n  }\n  \n  if (!isNaN(quarterNum) && quarterNum >= 1 && quarterNum <= 4) {\n    // Convert quarter to month range: Q1=1-3, Q2=4-6, Q3=7-9, Q4=10-12\n    const quarterMonths = {\n      1: [1, 2, 3],\n      2: [4, 5, 6],\n      3: [7, 8, 9],\n      4: [10, 11, 12]\n    };\n    monthValue = quarterMonths[quarterNum];\n  }\n  continue;\n}\n  \n  // Special handling for month (can be single value or array)\nif (field.toLowerCase() === 'month') {\n  if (Array.isArray(fval)) {\n    monthValue = fval.map(m => {\n      const monthStr = String(m).toLowerCase();\n      return monthMap[monthStr] || Number(m);\n    }).filter(m => !isNaN(m) && m >= 1 && m <= 12); // Validate 1-12 range\n  } else {\n    const monthStr = String(fval).toLowerCase();\n    const parsed = monthMap[monthStr] || Number(fval);\n    monthValue = (!isNaN(parsed) && parsed >= 1 && parsed <= 12) ? parsed : null;\n  }\n  continue;\n}\n  \n  // Special handling for week (can be single value or array)\n  if (field.toLowerCase() === 'week' || field.toLowerCase() === 'weeknum') {\n    if (Array.isArray(fval)) {\n      weekValue = fval.map(w => Number(w)).filter(w => !isNaN(w));\n    } else {\n      weekValue = Number(fval);\n    }\n    continue;\n  }\n  \n  // Special handling for date_range\n  if (field.toLowerCase() === 'date_range' && typeof fval === 'object') {\n    dateRangeFilter = fval;\n    continue;\n  }\n  \n  // Map field to actual schema\n  const actualField = normalizeField(field);\n  \n  // Handle complex filter objects with operators\n  if (typeof fval === \"object\" && !Array.isArray(fval)) {\n    if (fval.op && \"value\" in fval) {\n      const val = fval.value;\n      let opStr = String(fval.op).toLowerCase().trim();\n      \n      opStr = operatorMap[opStr] || opStr;\n      \n      // Handle BETWEEN operator\n      if (opStr.toUpperCase() === 'BETWEEN' && Array.isArray(val) && val.length === 2) {\n        whereParts.push(`\"${actualField}\" BETWEEN '${esc(val[0])}' AND '${esc(val[1])}'`);\n        continue;\n      }\n      \n      // Handle IN operator\n      if (opStr.toUpperCase() === 'IN' && Array.isArray(val)) {\n        const inValues = val.map(v => `'${esc(v)}'`).join(', ');\n        whereParts.push(`\"${actualField}\" IN (${inValues})`);\n        continue;\n      }\n      \n      // Handle NOT IN operator\n      if (opStr.toUpperCase() === 'NOT IN' && Array.isArray(val)) {\n        const inValues = val.map(v => `'${esc(v)}'`).join(', ');\n        whereParts.push(`\"${actualField}\" NOT IN (${inValues})`);\n        continue;\n      }\n      \n      // Handle LIKE/ILIKE operators\n      if (opStr.toUpperCase() === 'LIKE' || opStr.toUpperCase() === 'ILIKE') {\n        whereParts.push(`\"${actualField}\" ${opStr} '${esc(val)}'`);\n        continue;\n      }\n      \n      // Handle IS NULL / IS NOT NULL\n      if (opStr.toUpperCase() === 'IS NULL' || opStr.toUpperCase() === 'IS NOT NULL') {\n        whereParts.push(`\"${actualField}\" ${opStr}`);\n        continue;\n      }\n      \n      // Standard comparison operators\n      whereParts.push(`\"${actualField}\" ${opStr} '${esc(val)}'`);\n    }\n  } \n  // Handle array values (IN operator)\n  else if (Array.isArray(fval)) {\n    const inValues = fval.map(v => `'${esc(v)}'`).join(', ');\n    whereParts.push(`\"${actualField}\" IN (${inValues})`);\n  }\n  // Handle simple equality\n  else {\n    whereParts.push(`\"${actualField}\" = '${esc(fval)}'`);\n  }\n}\n\n// Add temporal filters (date_range, year, month, week, quarter) in priority order\nif (dateRangeFilter && dateRangeFilter.start && dateRangeFilter.end) {\n  // Explicit date range takes highest priority\n  whereParts.push(`\"Created_At\" BETWEEN '${esc(dateRangeFilter.start)}'::date AND '${esc(dateRangeFilter.end)}'::date`);\n} else if (weekValue !== null) {\n  // Week filter - can use Weeknum if available, or EXTRACT(WEEK FROM...)\n  if (Array.isArray(weekValue)) {\n    whereParts.push(`EXTRACT(WEEK FROM \"table_14\") IN (${weekValue.join(', ')})`);\n  } else {\n    whereParts.push(`EXTRACT(WEEK FROM \"table_14\") = ${weekValue}`);\n  }\n} else if (yearValue !== null && monthValue !== null) {\n  // Year + Month combination using EXTRACT\n  whereParts.push(`EXTRACT(YEAR FROM \"table_14\") = ${yearValue}`);\n  if (Array.isArray(monthValue)) {\n    whereParts.push(`EXTRACT(MONTH FROM \"table_14\") IN (${monthValue.join(', ')})`);\n  } else {\n    whereParts.push(`EXTRACT(MONTH FROM \"table_14\") = ${monthValue}`);\n  }\n} else if (monthValue !== null) {\n  // Month only (no year specified) - applies to all years\n  if (Array.isArray(monthValue)) {\n    whereParts.push(`EXTRACT(MONTH FROM \"table_14\") IN (${monthValue.join(', ')})`);\n  } else {\n    whereParts.push(`EXTRACT(MONTH FROM \"table_14\") = ${monthValue}`);\n  }\n} else if (yearValue !== null) {\n  // Year only\n  whereParts.push(`EXTRACT(YEAR FROM \"table_14\") = ${yearValue}`);\n}\n\nconst whereClause = whereParts.length ? `WHERE ${whereParts.join(\" AND \")}` : \"\";\n\n// Construct SQL\nlet sql = \"\";\n\n// Handle additional query modifiers\nconst having = intent.having || null;\n\nswitch (baseOp) {\n  case \"count\":\n    if (isDistinct && target) {\n      sql = `SELECT COUNT(DISTINCT \"${target}\") AS total FROM ${datasetId} ${whereClause};`;\n    } else if (target && target.toLowerCase().startsWith(\"distinct:\")) {\n      const fieldRaw = target.split(\":\")[1];\n      const field = normalizeField(fieldRaw);\n      sql = `SELECT COUNT(DISTINCT \"${field}\") AS total FROM ${datasetId} ${whereClause};`;\n    } else {\n      sql = `SELECT COUNT(${isDistinct ? 'DISTINCT *' : '*'}) AS total FROM ${datasetId} ${whereClause};`;\n    }\n    break;\n\n  case \"sum\":\n  case \"avg\":\n  case \"min\":\n  case \"max\":\n    if (!target) throw new Error(`Operation ${baseOp} requires a target field.`);\n    const agg = baseOp.toUpperCase();\n\n    // \u2b07\ufe0f ADD THE NEW CODE HERE (before the existing if/else)\n    if (baseOp === 'avg' && target && input.raw_query) {\n    const rawQuery = input.raw_query.toLowerCase(); // \u2705 Added declaration\n    \n    const impliesPerCadder = \n      /average.*(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      /(cadder|person|worker|seller|staff).*average/i.test(rawQuery) ||\n      /per\\s+(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      /each\\s+(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      input.aggregation_level === 'per_entity';\n    \n    if (impliesPerCadder) {\n      sql = `\n        SELECT AVG(total_sales) AS value\n        FROM (\n          SELECT \"Cadder\", SUM(\"${target}\") AS total_sales\n          FROM ${datasetId}\n          ${whereClause}\n          GROUP BY \"Cadder\"\n        ) AS cadder_totals;\n      `.trim();\n      break;\n    }\n  }\n    \n    if (groupBy.length > 0) {\n  // Handle temporal grouping specially\n  const aggSelectFields = [];\n  const groupFields = [];\n  \n  groupBy.forEach(f => {\n    const fLower = f.toLowerCase();\n    \n    if (fLower === 'month' || (fLower === 'created_at' && baseOp !== 'select')) {\n      selectFields.push(`TO_CHAR(\"Created_At\", 'YYYY-MM') AS period`);\n      selectFields.push(`EXTRACT(MONTH FROM \"table_14\")::int AS month_num`);\n      groupFields.push(`TO_CHAR(\"Created_At\", 'YYYY-MM')`);\n      groupFields.push(`EXTRACT(MONTH FROM \"table_14\")`);\n    } else if (fLower === 'year') {\n      selectFields.push(`EXTRACT(YEAR FROM \"table_14\")::int AS year`);\n      groupFields.push(`EXTRACT(YEAR FROM \"table_14\")`);\n    } else if (fLower === 'quarter' || fLower === 'q') {\n      selectFields.push(`EXTRACT(QUARTER FROM \"table_14\")::int AS quarter`);\n      groupFields.push(`EXTRACT(QUARTER FROM \"table_14\")`);\n    } else if (fLower === 'week') {\n      selectFields.push(`EXTRACT(WEEK FROM \"table_14\")::int AS week`);\n      groupFields.push(`EXTRACT(WEEK FROM \"table_14\")`);\n    } else if (fLower === 'day' || fLower === 'date') {\n      selectFields.push(`\"Created_At\"::date AS date`);\n      groupFields.push(`\"Created_At\"::date`);\n    } else {\n      selectFields.push(`\"${f}\"`);\n      groupFields.push(`\"${f}\"`);\n    }\n  });\n  \n  const selectFieldsStr = selectFields.join(\", \");\n  const groupFieldsStr = groupFields.join(\", \");\n\n      let finalOrderBy = orderBy;\n      let finalLimit = limit;\n\n      // Auto-detect ordering for ranking queries\n      if (needsOrdering && !orderBy) {\n        finalOrderBy = isBottomQuery ? \"value ASC\" : \"value DESC\";\n      }\n\n      // Auto-add limit for ranking queries\n      if (needsOrdering && !limit) {\n        finalLimit = 10;\n      }\n  \n      sql = `\n  SELECT ${selectFieldsStr},\n    ${agg}(${isDistinct ? 'DISTINCT ' : ''}\"${target}\") AS value\n  FROM ${datasetId}\n  ${whereClause}\n  GROUP BY ${groupFieldsStr}\n  ${having ? `HAVING ${having}` : \"\"}\n  ${finalOrderBy ? `ORDER BY ${parseOrderBy(finalOrderBy)}` : \"\"}  \n  ${finalLimit ? `LIMIT ${Number(finalLimit)}` : \"\"}; \n`.trim();\n    } else {\n      sql = `SELECT ${agg}(${isDistinct ? 'DISTINCT ' : ''}\"${target}\") AS value FROM ${datasetId} ${whereClause};`;\n    }\n    break;\n  \n  case \"select\":\n  case \"list\":\n  case \"fetch\":\n    const listSelectFields = target ? \n    parseFieldList(target).map(f => {\n      const mappedField = normalizeField(f);\n      return `\"${mappedField}\"`;\n    }).join(\", \") : \n    \"*\";\n  \n  sql = `\n    SELECT ${isDistinct ? 'DISTINCT' : ''} ${listSelectFields}\n    FROM ${datasetId}\n    ${whereClause}\n    ${orderBy ? `ORDER BY ${parseOrderBy(orderBy)}` : \"\"}\n    ${limit ? `LIMIT ${Number(limit)}` : \"\"};\n  `.trim();\n  break;\n  \n  case \"top\":\n  case \"bottom\":\n    if (!target) throw new Error(`Operation ${baseOp} requires a target field for sorting.`);\n    const sortOrder = baseOp === \"top\" ? \"DESC\" : \"ASC\";\n    const topLimit = limit || 10;\n    \n    sql = `\n      SELECT *\n      FROM ${datasetId}\n      ${whereClause}\n      ORDER BY \"${target}\" ${sortOrder}\n      LIMIT ${Number(topLimit)};\n    `.trim();\n    break;\n  \n  case \"group\":\n  case \"groupby\":\n    if (!groupBy || groupBy.length === 0) throw new Error(\"Group operation requires group_by fields.\");\n    \n    const grpSelectFields = groupBy.map(f => `\"${f}\"`).join(\", \");\n    const grpGroupFields = groupBy.map(f => `\"${f}\"`).join(\", \");\n    \n    sql = `\n      SELECT ${grpSelectFields},\n        COUNT(${isDistinct ? 'DISTINCT *' : '*'}) AS count\n        ${target ? `, SUM(\"${target}\") AS total` : ''}\n      FROM ${datasetId}\n      ${whereClause}\n      GROUP BY ${grpGroupFields}\n      ${having ? `HAVING ${having}` : \"\"}\n      ${orderBy ? `ORDER BY ${parseOrderBy(orderBy)}` : \"ORDER BY count DESC\"}\n      ${limit ? `LIMIT ${Number(limit)}` : \"\"};\n    `.trim();\n    break;\n\n  default:\n    sql = `SELECT * FROM ${datasetId} ${whereClause} ${limit ? `LIMIT ${Number(limit)}` : ''};`;\n}\n\n// Final safety check\nif (!sql.trim().toLowerCase().startsWith(\"select\")) {\n  throw new Error(\"Unsafe SQL detected \u2014 only SELECT queries allowed.\");\n}\n\n// Return formatted response\nreturn [{\n  json: {\n    query: sql.trim(),\n    dataset_id: datasetId,\n    meta: {\n      built_by: \"[ID]\",\n      operation: baseOp,\n      is_distinct: isDistinct,\n      target_field: target,\n      group_fields: groupBy,\n      date_filters: {\n        year: yearValue,\n        month: Array.isArray(monthValue) ? monthValue : monthValue,\n        week: Array.isArray(weekValue) ? weekValue : weekValue\n      },\n      intent_summary: `${baseOp.toUpperCase()}${isDistinct ? ' DISTINCT' : ''} on ${target || \"rows\"}${\n        groupBy.length ? \" grouped by \" + groupBy.join(\", \") : \"\"\n      }`,\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4096,
+        -1168
+      ],
+      "id": "__NODE_26__",
+      "name": "Build Safe SQL Query"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are ORBIT AI, an intelligent assistant for Orange Group.\nYour purpose is to interpret user queries and determine the correct retrieval strategy.\n\nYOUR ABILITY:\nHandle semantic (unstructured) queries using embeddings\nGenerate structured query intents for analytical questions (to be executed by a secondary agent)\nHelp users discover available documents or datasets\nYou must not execute SQL or visualization logic yourself.\n\nCORE BEHAVIOR RULES:\n1. NEVER expose tool names or function calls in your responses\n2. NEVER show <function=...> syntax to users\n3. Return ONLY natural language answers\n4. For structured queries, return ONLY the acknowledgment + JSON metadata\n\nRETRIEVAL STRATEGY\n1\ufe0f\u20e3 Document Discovery Questions\nWhen a user asks: \"What documents exist?\", \"Is there a handbook?\", \"What datasets are available?\"\n\u2192 Use List Documents tool (no parameters needed)\n\u2192 Return: File titles only\n\u2192 Response format: \"Yes, there are 3 available documents: Orange Employee Handbook, Canon Sales Tracker, and Laris Medical Outreach Data.\"\n\n2\ufe0f\u20e3 Semantic / Content Questions\nWhen a user asks about document content/policies/clauses:: \"What does the handbook say about leave policy?\", \"Explain clause 12\"\nMANDATORY RULES:\n\u2192 ALWAYS use Vector Store tool FIRST (no exceptions)\n\u2192 Only if Vector Store returns no results, then use List Documents\n\u2192 Never answer from table_4 alone for document questions\n\nProcess:\n\u2192 Use Vector Store tool with the query silently\n\u2192 Summarize clearly with source citations\n\u2192 Response format: \"Junior managers are entitled to 15 days of annual leave. (Source: Orange Employee Handbook)\"\n\n3\ufe0f\u20e3 Structured / Analytical Questions\nWhen the query involves:\n- Numbers: \"Count of...\", \"distinct number of ...\"\n- Aggregations: \"Average\", \"Sum\", \"Maximum\"\n- Time periods: \"during January\", \"in 2025\", \"last month\"\n- Comparisons: \"by city\", \"per region\", \"grouped by\"\n\n**CRITICAL: Dataset Selection Logic**\nBefore generating structured intent:\n1. Use List Documents tool to get available datasets\n2. Match user query keywords against dataset titles and schemas\n3. Select the BEST matching dataset based on:\n   - Keywords in user query (e.g., \"canon\" \u2192 Canon Sales Tracker)\n   - Fields mentioned (e.g., \"cartons\", \"price\" \u2192 dataset with those columns)\n   - Time period (e.g., \"2024\" \u2192 TDE 2024 dataset)\n4. Include the dataset's `id` field as `dataset_id` in the intent\n\nSPECIALIZED QUERY PATTERNS:\nRanking Queries (Top/Best/Highest/Bottom/Worst/Lowest)\nWhen users ask for \"top\", \"best\", \"highest\", \"most\", \"leading\", \"bottom\", \"worst\", \"lowest\", \"least\":\n- Always include group_by for the comparison dimension\n- Include limit (default: 10 if not specified)\n- **CRITICAL: Always set order_by based on ranking type:**\n  * \"top/best/highest/most/leading\" \u2192 order_by: \"value DESC\"\n  * \"bottom/worst/lowest/least\" \u2192 order_by: \"value ASC\"\n- Match operation to what's being measured:\n  * Quantity \u2192 operation: \"sum\", target: \"Carton\", order_by: \"value DESC\"\n  * Revenue \u2192 operation: \"sum\", target: \"Total_Price_NGN\", order_by: \"value DESC\"\n  * Count \u2192 operation: \"count\", order_by: \"value DESC\"\n  * Average \u2192 operation: \"avg\", order_by: \"value DESC\"\n-People/Worker Count Queries\nWhen users ask about \"how many people\", \"how many cadders\", \"how many workers\", \"number of staff\":\n **ALWAYS use operation: \"count_distinct\" or \"distinct_count\"**\n **ALWAYS set target: \"Cadder\"**\n Examples:\n  * \"How many people worked in 2024\" \u2192 operation: \"count_distinct\", target: \"Cadder\", filters: {\"year\": \"2024\"}\n  * \"How many cadders worked in Lagos\" \u2192 operation: \"count_distinct\", target: \"Cadder\", filters: {\"city\": \"Lagos\"}\n  * \"Number of workers by city\" \u2192 operation: \"count_distinct\", target: \"Cadder\", group_by: \"City\"\n\nFIELD NAME FLEXIBILITY\nAccept these variations and map consistently:\n- Location/City/Region \u2192 use \"Location\" in intent (auto-mapped to \"City\")\n- Carton/Cartons/Quantity/Qty/Volume \u2192 use \"Carton\"\n- Brand/Product \u2192 use \"Brand\"\n- Price/Amount/Revenue/Sales/Supply Amount \u2192 use \"Total_Price_NGN\" for sum operations\n- Date/Year/Period/Month \u2192 use \"Created_At\"\n- People/Cadders/Workers/Staff/Personnel \u2192 use \"Cadder\" with DISTINCT COUNT operation\n\nTIME BASED QUERIES\nAlways extract temporal information:\n- \"in 2024\" \u2192 filters: {\"year\": \"2024\"}\n- \"during January\" \u2192 filters: {\"month\": \"January\"}\n- \"last quarter\" \u2192 calculate date range\n- \"between March and May\" \u2192 filters: {\"month\": [\"March\", \"April\", \"May\"]}\n\nTEMPORAL AGGREGATION PATTERNS\nWhen users ask for averages or totals \"per\" time period, you MUST detect temporal aggregation:\n\nDAILY PATTERNS (per day/daily/each day/by date):\n- \"average sales per day\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"daily\"\n- \"daily revenue\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", temporal_aggregation: \"daily\"\n- \"total per day\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", temporal_aggregation: \"daily\"\n\nWEEKLY PATTERNS (per week/weekly/each week/by week):\n- \"weekly average\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"weekly\"  \n- \"sales per week\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", temporal_aggregation: \"weekly\"\n\nMONTHLY PATTERNS (per month/monthly/each month/by month):\n- \"monthly average sales\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"monthly\"\n- \"revenue per month\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", temporal_aggregation: \"monthly\"\n\nQUARTERLY PATTERNS (per quarter/quarterly/each quarter/by quarter):\n- \"quarterly performance\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"quarterly\"\n- \"average per quarter\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"quarterly\"\n\nYEARLY PATTERNS (per year/yearly/each year/by year):\n- \"yearly average\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\", temporal_aggregation: \"yearly\"\n- \"annual sales\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", temporal_aggregation: \"yearly\"\n\nCRITICAL RULES:\n1. ALWAYS include \"temporal_aggregation\" field when temporal patterns are detected\n2. Use the exact values: \"daily\", \"weekly\", \"monthly\", \"quarterly\", \"yearly\"\n3. For counting queries with temporal patterns, use operation: \"count\" with temporal_aggregation\n4. Temporal aggregation takes priority over simple group_by for averages/totals\n\nINTENT FORMAT WITH TEMPORAL AGGREGATION:\n\"I'll analyze the [dataset] data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"[id]\", \"operation\": \"avg\", \"target\": \"Total_Price_NGN\", \"filters\": {\"year\": \"2024\"}, \"temporal_aggregation\": \"daily\"}\n\nOUTPUT TYPE DETECTION\nCRITICAL: Detect whether user wants detailed breakdown or aggregated result:\n\nBREAKDOWN PATTERNS (list/show/display/each):\n- \"list all days\", \"show me daily\", \"display each week\", \"breakdown by month\"\n- \"each day's sales\", \"every week's revenue\", \"by date\", \"daily breakdown\"\n\u2192 output_type: \"breakdown\"\n\nAGGREGATED PATTERNS (average/total/per):\n- \"average per day\", \"total per week\", \"monthly average\", \"daily total\" \n- \"per day average\", \"weekly total\", \"overall monthly\"\n\u2192 output_type: \"aggregated\"\n\nDEFAULT: When uncertain, use \"aggregated\"\n\nEXAMPLES:\nUser: \"List all days in September with sales\" \n\u2192 output_type: \"breakdown\", temporal_aggregation: \"daily\"\n\nUser: \"What was the average sales per day\"\n\u2192 output_type: \"aggregated\", temporal_aggregation: \"daily\"\n\nUser: \"Show me weekly revenue breakdown\"\n\u2192 output_type: \"breakdown\", temporal_aggregation: \"weekly\"\n\nCOMPARATIVE QUERIES\nWhen comparing across dimensions:\n- \"by location\" \u2192 group_by: \"Location\"\n- \"per store\" \u2192 group_by: \"Store\"\n- \"across brands\" \u2192 group_by: \"Brand\"\n- \"for each month\" \u2192 group_by: \"Month\"\n\nMULTI-DIMENSIONAL GROUP BY RULES\nWhen users ask for breakdowns across MULTIPLE dimensions, you MUST include ALL dimensions in group_by:\n\nExamples:\n- \"sales by brand each month\" \u2192 group_by: [\"Brand\", \"Month\"]\n- \"cartons per city by quarter\" \u2192 group_by: [\"City\", \"Quarter\"]\n- \"revenue by store and year\" \u2192 group_by: [\"Store\", \"Year\"]\n- \"each brand sold each month in 2024\" \u2192 group_by: [\"Brand\", \"Month\"], filters: {\"year\": \"2024\"}\n\nCRITICAL: When you see temporal words (each/every/per) combined with \"by\" or multiple dimensions:\n\u2705 ALWAYS extract ALL grouping dimensions\n\u2705 \"each month\" = add \"Month\" to group_by\n\u2705 \"each quarter\" = add \"Quarter\" to group_by\n\u2705 \"each year\" = add \"Year\" to group_by\n\u2705 \"by city each month\" = group_by: [\"City\", \"Month\"]\n\n\u274c NEVER group by only one dimension when multiple are mentioned\n\nExample transformations:\n\"top sellers by quantity\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value DESC\", limit: 10\n\"best performing cities\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"City\", order_by: \"value DESC\", limit: 10\n\"highest revenue stores\" \u2192 operation: \"sum\", target: \"Total_Price_NGN\", group_by: \"Store\", order_by: \"value DESC\", limit: 10\n\"bottom performers\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value ASC\", limit: 10\n\"which locations are the top sellers\" \u2192 operation: \"sum\", target: \"Carton\", group_by: \"Location\", order_by: \"value DESC\", limit: 10\n\"how many cadders worked\" \u2192 operation: \"distinct count\", target: \"Cadders\", \n\nAVERAGE CALCULATION RULES:\n- \"average cadder sales\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (will be auto-detected as per-cadder calculation)\n- \"average sales per cadder\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (will be auto-detected)\n- \"average order value\" \u2192 operation: \"avg\", target: \"Total_Price_NGN\" (simple average)\n\nCRITICAL: Keywords \"cadder\", \"person\", \"worker\", \"per cadder\", \"each cadder\" trigger per-entity aggregation\n\nINTENT QUALITY CHECKLIST (validate before returning structured intent):\n\u2713 Dataset identified? (use List Documents if needed)\n\u2713 Operation matches query type? (sum for totals, count for quantities of records)\n\u2713 Target field specified for aggregations?\n\u2713 Group_by included for comparative queries?\n\u2713 Limit specified for top/ranking queries?\n\u2713 Filters include time constraints if mentioned?\n\n\u2192 Respond with ONLY this exact format:\n\"I'll analyze the [dataset name] data to answer your question.\"\n\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"[file_id]\", \"operation\": \"count\", \"target\": \"cartons\", \"filters\": {\"month\": \"January\", \"year\": \"2025\"}}\n\nCRITICAL RULES FOR STRUCTURED QUERIES\n- ALWAYS call List Documents first to get dataset_id\n- Use the exact `id` field from table_5 as dataset_id\n- DO NOT attempt to execute the query yourself\n- DO NOT generate SQL\n- ONLY return the intent metadata and a brief acknowledgment\n- The handoff metadata MUST be valid JSON on a separate line\n\nCRITICAL OUTPUT RULES:\n\u274c NEVER include: <function=...>, </function>, tool names, reasoning steps\n\u2705 ALWAYS include: Natural language answer OR (for structured) acknowledgment + JSON\n\u2705 For structured queries: JSON must be valid and on a new line after the acknowledgment\n\nTOOL USAGE RULES\n- List Documents: Call with NO PARAMETERS (it returns all documents automatically)\n- Vector Store: Use for text/semantic search only\n- For structured queries: MANDATORY to use List Documents first to get dataset info and dataset_id\n\nEXAMPLES\nUser: \"What can get me sacked\"\nAction: Use Vector Store\nResponse: [Answer from table_6]\n{\"intent_type\": \"unstructured\"}\n\nUser: \"How many cartons of cannon were sold during January 2025\"\nAction: Use List Documents (to find 2025 sales dataset)\nResponse: \"I'll analyze the  Sales data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"1abc123...\", \"operation\": \"sum\", \"target\": \"cartons\", \"filters\": {\"month\": \"January\", \"year\": \"2025\", \"product\": \"Canon\"}}\n\nUser: \"What datasets are available?\"\nAction: Use List Documents\nResponse: \"Available datasets: 1) Orange Employee Handbook, 2) Canon Sales Tracker, 3) Laris Medical Data\"\n{\"intent_type\": \"unstructured\"}\n\nUser: \"What was the average sales per day for Yewande in 2024?\"\nAction: Use List Documents (to find sales dataset)\nResponse: \"I'll analyze the tde_2024 data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"avg\", \"target\": \"Total_Price_NGN\", \"filters\": {\"Cadder\": \"Yewande Pemisire\", \"year\": \"2024\"}, \"temporal_aggregation\": \"daily\"}\n\nUser: \"Show me monthly revenue for Canon in 2024\"\nAction: Use List Documents (to find sales dataset)  \nResponse: \"I'll analyze the sales data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"sum\", \"target\": \"Total_Price_NGN\", \"filters\": {\"Brand\": \"Canon\", \"year\": \"2024\"}, \"temporal_aggregation\": \"monthly\"}\n\nUser: \"Weekly average cartons sold in Lagos\"\nAction: Use List Documents (to find sales dataset)\nResponse: \"I'll analyze the sales data to answer your question.\"  \n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"avg\", \"target\": \"Carton\", \"filters\": {\"City\": \"Lagos\"}, \"temporal_aggregation\": \"weekly\"}\n\nUser: \"List all days in September 2024 with total revenue\"\nResponse: \"I'll analyze the tde_2024 data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"sum\", \"target\": \"Total_Price_NGN\", \"filters\": {\"month\": \"September\", \"year\": \"2024\"}, \"temporal_aggregation\": \"daily\", \"output_type\": \"breakdown\"}\n\nUser: \"Show me monthly sales for each brand\"\nResponse: \"I'll analyze the sales data to answer your question.\"  \n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"sum\", \"target\": \"Total_Price_NGN\", \"group_by\": [\"Brand\", \"Month\"], \"output_type\": \"breakdown\"}\n\nUser: \"What's the average revenue per day?\"\nResponse: \"I'll analyze the sales data to answer your question.\"\n{\"intent_type\": \"structured\", \"handoff\": \"Agent_2\", \"dataset_id\": \"tde_2024\", \"operation\": \"avg\", \"target\": \"Total_Price_NGN\", \"temporal_aggregation\": \"daily\", \"output_type\": \"aggregated\"}\n\nRemember: Users should NEVER see tool calls or function syntax. Keep all tool usage invisible.\n\nOther Notes;\nKeep tokens perrequest at a Limit of 8000 \n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -5520,
+        -640
+      ],
+      "id": "__NODE_27__",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -5568,
+        -496
+      ],
+      "id": "__NODE_28__",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Purpose: Retrieve semantically relevant text from table_7 documents.\nPrompt / Description:\nUse this tool to find answers or context from table_7 documents using semantic search.\nGiven a query, it retrieves the most relevant text chunks stored in the vector database.\nWhen to use:\n\u2022\tFor natural-language questions about document content.\n\u2022\tFor any question beginning with \u201cwhat does it say,\u201d \u201cexplain,\u201d or \u201csummarize.\u201d\nBehavioral Rules:\n\u2022\tAlways attempt this first for semantic questions.\n\u2022\tReturn the retrieved text as part of your reasoning.\n\u2022\tIf no relevant results, then fallback to List Documents or other tools.\nImportant Note:\nVector retrieval uses the Gemini embedding-004 model.\nEnsure retrieved context is clearly included in your final answer.",
+        "topK": 5,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        -5664,
+        -352
+      ],
+      "id": "__NODE_29__",
+      "name": "Postgres PGVector Store",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=Purpose: Discover what datasets or documents are available.\n\nUSE THIS TOOL WITH NO PARAMETERS - it automatically returns all available documents.\n\nReturns:\n- File title and description\n- schema (for structured datasets)\n\nWhen to use:\n- User asks \"what documents are available\"\n- Before structured queries, to get dataset_id and schema\n- To confirm document sources\n\nIMPORTANT: This tool takes NO PARAMETERS. Just call it and it will return all documents.",
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "document_metadata",
+          "mode": "list",
+          "cachedResultName": "document_metadata"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [
+        -5312,
+        -496
+      ],
+      "id": "__NODE_30__",
+      "name": "List Documents1",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -5504,
+        -352
+      ],
+      "id": "__NODE_31__",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -5440,
+        -496
+      ],
+      "id": "__NODE_32__",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.intent_type }}",
+              "rightValue": "structured",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4944,
+        -640
+      ],
+      "id": "__NODE_33__",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items || items.length === 0) {\n  return [{ \n    json: { message: \"No results found.\" },\n    pairedItem: { item: 0 }\n  }];\n}\n\nconst first = items[0]?.json || {};\nconst keys = Object.keys(first);\n\n// \ud83d\udea8 FIX: Check for multiple rows FIRST\n// 1\ufe0f\u20e3 Multiple rows\nif (items.length > 1) {\n  const rowData = items.map(i => i.json);\n  const hasTemporal = keys.some(k => \n    ['period', 'month', 'month_num', 'year', 'quarter', 'week', 'date'].includes(k.toLowerCase())\n  );\n  \n  if (hasTemporal && keys.length >= 3) {\n    const formatted = items.map((r, i) => {\n      const row = r.json;\n      const temporal = row.period || row.month_num || row.year || row.quarter || row.week || row.date;\n      const otherFields = Object.entries(row)\n        .filter(([k]) => !['period', 'month_num', 'year', 'quarter', 'week', 'date'].includes(k.toLowerCase()))\n        .map(([k, v]) => `${k}: ${typeof v === 'number' ? Number(v).toLocaleString() : v}`)\n        .join(\", \");\n      return `${i + 1}. Period: ${temporal} | ${otherFields}`;\n    }).join(\"\\n\");\n    \n    return [{\n      json: { message: formatted, raw: rowData },\n      pairedItem: { item: 0 }\n    }];\n  }\n  \n  const formatted = items.map((r, i) => {\n    const row = r.json;\n    const values = Object.entries(row)\n      .map(([k, v]) => `${k}: ${typeof v === 'number' ? Number(v).toLocaleString() : v}`)\n      .join(\", \");\n    return `${i + 1}. ${values}`;\n  }).join(\"\\n\");\n  \n  return [{\n    json: { message: formatted, raw: rowData },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 2\ufe0f\u20e3 Single scalar value with context message\nif (keys.length === 1 && typeof first[keys[0]] !== \"object\") {\n  const key = keys[0];\n  const value = first[key];\n  \n  let message = `${key}: ${Number(value).toLocaleString()}`;\n  \n  // \u2705 Add context for per-cadder averages\n  try {\n    const metaInfo = $('Build Safe SQL Query1').first().json.meta;\n    if (metaInfo?.operation === 'avg' && metaInfo?.target_field === 'Total_Price_NGN') {\n      message += \"\\n\\n_(Average calculated across individual cadders)_\";\n    }\n  } catch (err) {\n    // Ignore if meta not available\n  }\n  \n  return [{\n    json: { message, raw: first },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 3\ufe0f\u20e3 Single complex object\nif (items.length === 1 && keys.length > 1) {\n  const formatted = Object.entries(first)\n    .map(([k, v]) => `${k}: ${v}`)\n    .join(\"\\n\");\n  return [{\n    json: { message: formatted, raw: first },\n    pairedItem: { item: 0 }\n  }];\n}\n\n// 4\ufe0f\u20e3 Fallback\nreturn [{\n  json: {\n    message: JSON.stringify(items.map(i => i.json), null, 2),\n    raw: items.map(i => i.json)\n  },\n  pairedItem: { item: 0 }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4224,
+        -656
+      ],
+      "id": "__NODE_34__",
+      "name": "Result Formatter1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Format this output {{ $json.message }} in a professional tone and natural language. Context for reply can be gotten from table_1  user prompt {{ $('When chat message received').first().json.chatInput }} and intent summary {{ $('Build Safe SQL Query1').first().json.meta.intent_summary }}",
+        "options": {
+          "systemMessage": "=You are the responder to user prompt. You are to return a meaningful, professional and natural language reply to the end user based on the final output.\n\nCritical notes:\n- The response should be formatted for WhatsApp replies. In Whatsapp, bold words are designated with *word*, italic are in _word_ , strikethrough in ~word~, monospace ~~~word~~~\n- Output must fit in to the 4096 characters limit. \n- If {{ $('Build Safe SQL Query1').first().json.meta.intent_summary }} contains Total_Price_NGN, treat it as a monetary value and preceed the figures with # as denomination (e.g #1,500). But if it is Carton use only the plain numbers and add cartons behind it (e.g 50 cartons).\n- if {{ $('Build Safe SQL Query1').first().json.query }} is a valid SQL query that contains SELECT, but {{ $('Query Structureddb1').first().json.value }} is null, it means the user failed the authentication check. return the response 'Access denied. You don't have permission for the\u00a0dataset.' to the user\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -3984,
+        -656
+      ],
+      "id": "__NODE_35__",
+      "name": "AI Agent3"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -3984,
+        -528
+      ],
+      "id": "__NODE_36__",
+      "name": "Groq Chat Model3",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4464,
+        -656
+      ],
+      "id": "__NODE_37__",
+      "name": "Query Structureddb1",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------\n// INPUT FROM table_10 AGENT\n// ---------------------------\nconst aiResponse = $input.first().json;\nlet responseText = aiResponse.output || aiResponse.text || '';\n\n// ---------------------------\n// GET ORIGINAL USER QUERY\n// ---------------------------\nconst originalQuery = $(\"When chat message received\").first().json.chatInput;\n\n// ---------------------------\n// BRAND NORMALIZATION LOGIC\n// ---------------------------\nconst brandVariations = {\n  'Cannon Extra': ['cano', 'canon', 'cannon', 'canno', 'kanon', 'canoon'],\n  'Laris': ['lari', 'lars', 'laris', 'larris', 'lares', 'larius']\n};\n\nconst normalizeBrandName = (text) => {\n  const lower = text.toLowerCase();\n  for (const [canonical, variations] of Object.entries(brandVariations)) {\n    for (const variant of variations) {\n      const regex = new RegExp(`\\\\b${variant}\\\\b`, 'gi');\n      text = text.replace(regex, canonical);\n    }\n  }\n  return text;\n};\n\nconst normalizeSingleBrand = (brandValue) => {\n  if (!brandValue) return brandValue;\n  const lowerBrand = String(brandValue).toLowerCase().trim();\n  for (const [canonical, variations] of Object.entries(brandVariations)) {\n    if (variations.some(v => v.toLowerCase() === lowerBrand)) {\n      return canonical;\n    }\n  }\n  return brandValue;\n};\n\nconst normalizeFilters = (filters) => {\n  if (!filters || typeof filters !== 'object') return filters;\n  const normalized = { ...filters };\n\n  if (normalized.brand) normalized.brand = normalizeSingleBrand(normalized.brand);\n  if (normalized.Brand) normalized.Brand = normalizeSingleBrand(normalized.Brand);\n  if (normalized.product) normalized.product = normalizeSingleBrand(normalized.product);\n\n  return normalized;\n};\n\nconsole.log('Raw AI Response:', responseText);\n\n// ---------------------------\n// CLEAN ARTIFACTS\n// ---------------------------\nresponseText = responseText\n  .replace(/<function=.*?<\\/function>/gs, '')\n  .replace(/,function=.*?>/g, '')\n  .trim();\n\n// ---------------------------\n// PARSE JSON BLOCK\n// ---------------------------\nconst jsonPattern = /(\\{(?:[^{}]|{[^{}]*})*\\})/g;\nconst matches = responseText.match(jsonPattern);\n\nif (matches) {\n  for (const match of matches) {\n    try {\n      const parsed = JSON.parse(match);\n\n      // ======================================================================\n      // \u2713 STRUCTURED INTENT BLOCK\n      // ======================================================================\n      if (parsed.intent_type?.toLowerCase() === 'structured') {\n        if (!parsed.dataset_id) {\n          throw new Error('Structured query missing dataset_id - AI Agent must call List Documents first');\n        }\n\n        const jsonIndex = responseText.indexOf(match);\n        let cleanResponse = responseText.substring(0, jsonIndex).trim();\n\n        cleanResponse = normalizeBrandName(cleanResponse);\n        const normalizedFilters = normalizeFilters(parsed.filters);\n\n        // ---------------------------\n        // DETECT AGGREGATION PATTERNS\n        // ---------------------------\n        const perEntityPattern = /average.*(per|by|for each|of each).*(cadder|person|worker|seller|staff)/i;\n        const cadderAveragePattern = /(cadder|person|worker|seller|staff).*(average|avg)|average.*(cadder|person|worker|seller|staff)/i;\n        \n        let aggregationLevel = 'simple';\n        let entityField = null;\n        \n        if (perEntityPattern.test(originalQuery) || cadderAveragePattern.test(originalQuery)) {\n          aggregationLevel = 'per_entity';\n          entityField = 'Cadder';\n        }\n\n        // ---------------------------\n        // DETECT TEMPORAL AGGREGATION PATTERNS\n        // ---------------------------\n        let temporalAggregation = null;\n        const temporalPatterns = {\n          'daily': ['per day', 'daily', 'each day', 'by date', 'day by day'],\n          'weekly': ['per week', 'weekly', 'each week', 'by week', 'week over week'],\n          'monthly': ['per month', 'monthly', 'each month', 'by month', 'month by month'],\n          'quarterly': ['per quarter', 'quarterly', 'each quarter', 'by quarter'],\n          'yearly': ['per year', 'yearly', 'each year', 'by year', 'year over year']\n        };\n\n        // Check parsed intent first, then fallback to raw query detection\n        if (parsed.temporal_aggregation) {\n          temporalAggregation = parsed.temporal_aggregation;\n        } else {\n          // Auto-detect from table_15 query as fallback\n          const queryLower = originalQuery.toLowerCase();\n          for (const [period, keywords] of Object.entries(temporalPatterns)) {\n            if (keywords.some(keyword => queryLower.includes(keyword))) {\n              temporalAggregation = period;\n              break;\n            }\n          }\n        }\n        // ---------------------------\n        // DETECT OUTPUT TYPE PATTERNS  \n        // ---------------------------\n        let outputType = null;\n        const breakdownPatterns = ['list all', 'show me', 'display', 'breakdown', 'each', 'every', 'by date', 'by week', 'by month', 'by quarter', 'by year'];\n        const aggregatedPatterns = ['average', 'total', 'sum', 'overall', 'per day', 'per week', 'per month', 'per quarter', 'per year'];\n\n        // Check parsed intent first, then fallback to raw query detection\n        if (parsed.output_type) {\n          outputType = parsed.output_type;\n        } else {\n          // Auto-detect from table_15 query as fallback\n          const queryLower = originalQuery.toLowerCase();\n          if (breakdownPatterns.some(pattern => queryLower.includes(pattern))) {\n            outputType = 'breakdown';\n          } else if (aggregatedPatterns.some(pattern => queryLower.includes(pattern))) {\n            outputType = 'aggregated';\n          } else {\n            outputType = 'aggregated'; // Default fallback\n          }\n        }\n\n        // ---------------------------\n        // OUTPUT STRUCTURED INTENT\n        // ---------------------------\n        const structuredOutput = {\n          response: cleanResponse,\n          intent_type: 'structured',\n          handoff: parsed.handoff || 'Agent_2',\n          dataset_id: parsed.dataset_id,\n          operation: parsed.operation,\n          target: parsed.target,\n          filters: normalizedFilters,\n          group_by: parsed.group_by || null,\n          order_by: parsed.order_by || null,\n          limit: parsed.limit || null,\n          temporal_aggregation: temporalAggregation,\n          output_type: outputType,\n          is_structured: true,\n          raw_query: originalQuery, // \u2705 ADD ORIGINAL QUERY\n          aggregation_level: aggregationLevel, // \u2705 ADD AGGREGATION LEVEL\n          entity_field: entityField, // \u2705 ADD ENTITY FIELD\n          raw_intent: {\n            ...parsed,\n            filters: normalizedFilters\n          },\n        };\n\n        // ====================================================================\n        // \u2713 DATASET VALIDATION\n        // ====================================================================\n        const datasetId = structuredOutput.dataset_id || structuredOutput.raw_intent?.dataset_id;\n        if (!datasetId) {\n          throw new Error('Structured query missing dataset_id. AI Agent must select a dataset from table_11');\n        }\n\n        // Attach validated dataset_id + table_name\n        structuredOutput.validated_dataset_id = datasetId;\n        structuredOutput.table_name = datasetId;\n\n        return [{ json: structuredOutput }];\n      }\n\n      // ======================================================================\n      // \u2713 UNSTRUCTURED INTENT BLOCK\n      // ======================================================================\n      if (parsed.intent_type?.toLowerCase() === 'unstructured') {\n        responseText = responseText.replace(match, '').trim();\n        return [{\n          json: { text: responseText },\n          pairedItem: { text: responseText }\n        }];\n      }\n\n    } catch (err) {\n      console.error('JSON parse error:', err.message);\n      continue;\n    }\n  }\n}\n\n// ============================================================================\n// DEFAULT FALLBACK\n// ============================================================================\nreturn [{\n  json: {\n    text: responseText.trim()\n  },\n  pairedItem: {\n    text: responseText.trim()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5168,
+        -640
+      ],
+      "id": "__NODE_38__",
+      "name": "Intent Parsing & Validation1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// If not structured, skip downstream\nif (!input.is_structured) {\n  return [{\n    json: {\n      skip: true,\n      reason: \"Non-structured query \u2014 handled by Agent 1\",\n    },\n  }];\n}\n\n// Escape helper\nconst esc = (val) => {\n  if (val === null || val === undefined) return null;\n  return String(val).replace(/'/g, \"''\");\n};\n\n// Field mapping for case-sensitive columnar schema (dynamically expandable)\nconst fieldMap = {\n  'city': 'City',\n  'brand': 'Brand',\n  'month': 'Created_At',\n  'year': 'Created_At',\n  'carton': 'Carton',\n  'cartons': 'Carton',\n  'store': 'Store',\n  'lga': 'LGA',\n  'date': 'Created_At',\n  'week': 'Created_At',\n  'segment': 'LGA_Segment',\n  'caddable_area': 'CADD_able_Area',\n  'total_price': 'Total_Price_NGN',\n  'price': 'Total_Price_NGN',\n  'amount': 'Total_Price_NGN',\n  'quantity': 'Carton',\n  'location': 'City',\n  'product': 'Brand',\n  'customer': 'Store',\n  'customers': 'Store',\n  'locations': 'City',     \n  'qty': 'Carton',         \n  'quantities': 'Carton',  \n  'revenue': 'Total_Price_NGN',  \n  'sales': 'Total_Price_NGN',    \n  'region': 'City',\n  'volume': 'Carton',\n  'people': 'Cadder',\n  'cadders': 'Cadder',\n  'personnels': 'Cadder',\n  'workers': 'Cadder',\n  'quarter': 'Created_At', \n  'q': 'Created_At',       \n  'week': 'Created_At',    \n  'day': 'Created_At',     \n  'date': 'Created_At',    \n};\n\n// Normalize field names with case-insensitive mapping\nconst normalizeField = (field) => {\n  if (!field) return null;\n  const lower = String(field).toLowerCase().trim();\n  return fieldMap[lower] || field;\n};\n\n// SQL operator mapping\nconst operatorMap = {\n  'equals': '=',\n  'equal': '=',\n  'eq': '=',\n  'not_equals': '!=',\n  'not_equal': '!=',\n  'ne': '!=',\n  'greater_than': '>',\n  'gt': '>',\n  'greater_than_or_equal': '>=',\n  'gte': '>=',\n  'less_than': '<',\n  'lt': '<',\n  'less_than_or_equal': '<=',\n  'lte': '<=',\n  'like': 'LIKE',\n  'ilike': 'ILIKE',\n  'in': 'IN',\n  'not_in': 'NOT IN',\n  'between': 'BETWEEN',\n  'is_null': 'IS NULL',\n  'is_not_null': 'IS NOT NULL'\n};\n\n// Excel date conversion helper\nconst yearToExcelRange = (year) => {\n  const yearNum = Number(year);\n  if (isNaN(yearNum)) return null;\n  \n  const startDate = new Date(yearNum, 0, 1);\n  const endDate = new Date(yearNum, 11, 31);\n  const epoch = new Date(1899, 11, 30);\n  \n  const startSerial = Math.floor((startDate - epoch) / (1000 * 60 * 60 * 24));\n  const endSerial = Math.floor((endDate - epoch) / (1000 * 60 * 60 * 24));\n  \n  return { start: startSerial, end: endSerial };\n};\n\n// Month name to number mapping\nconst monthMap = {\n  'january': 1, 'jan': 1,\n  'february': 2, 'feb': 2,\n  'march': 3, 'mar': 3,\n  'april': 4, 'apr': 4,\n  'may': 5,\n  'june': 6, 'jun': 6,\n  'july': 7, 'jul': 7,\n  'august': 8, 'aug': 8,\n  'september': 9, 'sep': 9, 'sept': 9,\n  'october': 10, 'oct': 10,\n  'november': 11, 'nov': 11,\n  'december': 12, 'dec': 12\n};\n\n// Helper for Orderby:\nconst parseOrderBy = (orderByStr) => {\n  if (!orderByStr) return '';\n  \n  const parts = orderByStr.split(/\\s+/).filter(part => part.trim());\n  const field = parts[0].replace(/\"/g, '');\n  const direction = parts[1] || 'ASC';\n  \n  return `\"${field}\" ${direction}`;\n};\n\n// Helper for columns\nconst parseFieldList = (fieldString) => {\n  if (!fieldString) return [];\n  if (Array.isArray(fieldString)) return fieldString;\n  if (typeof fieldString === 'string' && fieldString.includes(',')) {\n    return fieldString.split(',').map(f => f.trim());\n  }\n  return [fieldString];\n};\n\n// Validate dataset\nconst datasetId = input.dataset_id || input.table_name || input.file_id || input.dataset || input.datasetId;\nif (!datasetId) throw new Error(\"Missing dataset_id/table_name \u2013 cannot build SQL.\");\n\n// NEW: Validate format to prevent SQL injection\nif (!/^[a-zA-Z0-9_-]+$/.test(datasetId)) {\n  throw new Error(\"Invalid dataset_id format\");\n}\n\n// Extract intent\nconst intent = input.raw_intent || input;\nif (!intent || intent.intent_type !== \"structured\") {\n  return [{\n    json: {\n      skip: true,\n      reason: \"Non-structured query \u2014 handled upstream (Agent 1).\",\n    },\n  }];\n}\n\n// Get properties with enhanced operation handling\nlet op = (intent.operation || \"select\").toLowerCase().trim();\nconst targetRaw = intent.target || intent.measure || null;\nconst target = targetRaw ? normalizeField(targetRaw) : null;\nlet groupBy = intent.group_by || intent.groupby || null;\nconst orderBy = intent.order_by || intent.orderby || null;\nconst limit = intent.limit || intent.top || null;\nconst filters = intent.filters || {};\n\n// Handle compound operations (count_distinct, sum_grouped, etc.)\nlet isDistinct = false;\nlet baseOp = op;\n\nif (op.includes('_')) {\n  const parts = op.split('_');\n  if (parts.includes('distinct')) {\n    isDistinct = true;\n    baseOp = parts.filter(p => p !== 'distinct').join('_');\n  }\n}\n\n// Map operation aliases\nconst operationMap = {\n  'count_distinct': 'count',\n  'countdistinct': 'count',\n  'distinct_count': 'count',\n  'sum_by': 'sum',\n  'average': 'avg',\n  'mean': 'avg',\n  'maximum': 'max',\n  'minimum': 'min',\n  'total': 'sum',\n  'aggregate': 'sum'\n};\n\nbaseOp = operationMap[baseOp] || baseOp;\n\n// Normalize group_by to array and map fields with case-insensitive handling\nif (typeof groupBy === \"string\") groupBy = [groupBy];\nif (!Array.isArray(groupBy)) groupBy = [];\ngroupBy = groupBy.map(g => normalizeField(g)).filter(Boolean);\n\n// Auto-detect ranking/top queries from table_12, limit, or query keywords\nconst rankingKeywords = ['top', 'best', 'highest', 'most', 'leading', 'greatest'];\nconst bottomKeywords = ['bottom', 'worst', 'lowest', 'least', 'smallest'];\n\nconst isTopQuery = rankingKeywords.some(kw => \n  op.includes(kw) || \n  JSON.stringify(intent).toLowerCase().includes(kw)\n);\n\nconst isBottomQuery = bottomKeywords.some(kw => \n  op.includes(kw) || \n  JSON.stringify(intent).toLowerCase().includes(kw)\n);\n\nconst needsOrdering = (isTopQuery || isBottomQuery) && groupBy.length > 0 && \n  (baseOp === 'sum' || baseOp === 'count' || baseOp === 'avg' || baseOp === 'max' || baseOp === 'min');\n\n// Build WHERE clause with advanced filtering support\nconst whereParts = [];\nlet yearValue = null;\nlet monthValue = null;\nlet weekValue = null;\nlet dateRangeFilter = null;\n\nfor (const [field, fval] of Object.entries(filters)) {\n  if (fval === null || fval === undefined) continue;\n\n  // Special handling for year\n  if (field.toLowerCase() === 'year') {\n    yearValue = Number(fval);\n    continue;\n  }\n\n  // Special handling for quarter (Q1, Q2, Q3, Q4 or 1-4)\nif (field.toLowerCase() === 'quarter' || field.toLowerCase() === 'q') {\n  let quarterNum = null;\n  if (typeof fval === 'string') {\n    const qStr = fval.toLowerCase().replace(/[^0-9]/g, ''); // Extract number from \"table_13\"\n    quarterNum = Number(qStr);\n  } else {\n    quarterNum = Number(fval);\n  }\n  \n  if (!isNaN(quarterNum) && quarterNum >= 1 && quarterNum <= 4) {\n    // Convert quarter to month range: Q1=1-3, Q2=4-6, Q3=7-9, Q4=10-12\n    const quarterMonths = {\n      1: [1, 2, 3],\n      2: [4, 5, 6],\n      3: [7, 8, 9],\n      4: [10, 11, 12]\n    };\n    monthValue = quarterMonths[quarterNum];\n  }\n  continue;\n}\n  \n  // Special handling for month (can be single value or array)\nif (field.toLowerCase() === 'month') {\n  if (Array.isArray(fval)) {\n    monthValue = fval.map(m => {\n      const monthStr = String(m).toLowerCase();\n      return monthMap[monthStr] || Number(m);\n    }).filter(m => !isNaN(m) && m >= 1 && m <= 12); // Validate 1-12 range\n  } else {\n    const monthStr = String(fval).toLowerCase();\n    const parsed = monthMap[monthStr] || Number(fval);\n    monthValue = (!isNaN(parsed) && parsed >= 1 && parsed <= 12) ? parsed : null;\n  }\n  continue;\n}\n  \n  // Special handling for week (can be single value or array)\n  if (field.toLowerCase() === 'week' || field.toLowerCase() === 'weeknum') {\n    if (Array.isArray(fval)) {\n      weekValue = fval.map(w => Number(w)).filter(w => !isNaN(w));\n    } else {\n      weekValue = Number(fval);\n    }\n    continue;\n  }\n  \n  // Special handling for date_range\n  if (field.toLowerCase() === 'date_range' && typeof fval === 'object') {\n    dateRangeFilter = fval;\n    continue;\n  }\n  \n  // Map field to actual schema\n  const actualField = normalizeField(field);\n  \n  // Handle complex filter objects with operators\n  if (typeof fval === \"object\" && !Array.isArray(fval)) {\n    if (fval.op && \"value\" in fval) {\n      const val = fval.value;\n      let opStr = String(fval.op).toLowerCase().trim();\n      \n      opStr = operatorMap[opStr] || opStr;\n      \n      // Handle BETWEEN operator\n      if (opStr.toUpperCase() === 'BETWEEN' && Array.isArray(val) && val.length === 2) {\n        whereParts.push(`\"${actualField}\" BETWEEN '${esc(val[0])}' AND '${esc(val[1])}'`);\n        continue;\n      }\n      \n      // Handle IN operator\n      if (opStr.toUpperCase() === 'IN' && Array.isArray(val)) {\n        const inValues = val.map(v => `'${esc(v)}'`).join(', ');\n        whereParts.push(`\"${actualField}\" IN (${inValues})`);\n        continue;\n      }\n      \n      // Handle NOT IN operator\n      if (opStr.toUpperCase() === 'NOT IN' && Array.isArray(val)) {\n        const inValues = val.map(v => `'${esc(v)}'`).join(', ');\n        whereParts.push(`\"${actualField}\" NOT IN (${inValues})`);\n        continue;\n      }\n      \n      // Handle LIKE/ILIKE operators\n      if (opStr.toUpperCase() === 'LIKE' || opStr.toUpperCase() === 'ILIKE') {\n        whereParts.push(`\"${actualField}\" ${opStr} '${esc(val)}'`);\n        continue;\n      }\n      \n      // Handle IS NULL / IS NOT NULL\n      if (opStr.toUpperCase() === 'IS NULL' || opStr.toUpperCase() === 'IS NOT NULL') {\n        whereParts.push(`\"${actualField}\" ${opStr}`);\n        continue;\n      }\n      \n      // Standard comparison operators\n      whereParts.push(`\"${actualField}\" ${opStr} '${esc(val)}'`);\n    }\n  } \n      // Handle array values (IN operator)\n      else if (Array.isArray(fval)) {\n        const inValues = fval.map(v => `'${esc(v)}'`).join(', ');\n        whereParts.push(`\"${actualField}\" IN (${inValues})`);\n      }\n      // Handle simple equality\n      else {\n        whereParts.push(`\"${actualField}\" = '${esc(fval)}'`);\n      }\n    }\n\n      // Add temporal filters (date_range, year, month, week, quarter) in priority order\n      if (dateRangeFilter && dateRangeFilter.start && dateRangeFilter.end) {\n        // Explicit date range takes highest priority\n        whereParts.push(`\"Created_At\" BETWEEN '${esc(dateRangeFilter.start)}'::date AND '${esc(dateRangeFilter.end)}'::date`);\n      } else if (weekValue !== null) {\n        // Week filter - can use Weeknum if available, or EXTRACT(WEEK FROM...)\n        if (Array.isArray(weekValue)) {\n          whereParts.push(`EXTRACT(WEEK FROM \"table_14\") IN (${weekValue.join(', ')})`);\n        } else {\n          whereParts.push(`EXTRACT(WEEK FROM \"table_14\") = ${weekValue}`);\n        }\n      } else if (yearValue !== null && monthValue !== null) {\n        // Year + Month combination using EXTRACT\n        whereParts.push(`EXTRACT(YEAR FROM \"table_14\") = ${yearValue}`);\n        if (Array.isArray(monthValue)) {\n          whereParts.push(`EXTRACT(MONTH FROM \"table_14\") IN (${monthValue.join(', ')})`);\n        } else {\n          whereParts.push(`EXTRACT(MONTH FROM \"table_14\") = ${monthValue}`);\n        }\n      } else if (monthValue !== null) {\n        // Month only (no year specified) - applies to all years\n        if (Array.isArray(monthValue)) {\n          whereParts.push(`EXTRACT(MONTH FROM \"table_14\") IN (${monthValue.join(', ')})`);\n        } else {\n          whereParts.push(`EXTRACT(MONTH FROM \"table_14\") = ${monthValue}`);\n        }\n      } else if (yearValue !== null) {\n        // Year only\n        whereParts.push(`EXTRACT(YEAR FROM \"table_14\") = ${yearValue}`);\n      }\n\n      const whereClause = whereParts.length ? `WHERE ${whereParts.join(\" AND \")}` : \"\";\n\n      // Construct SQL\n      let sql = \"\";\n\n      // Handle additional query modifiers\n      const having = intent.having || null;\n\n      switch (baseOp) {\n        case \"count\":\n          if (isDistinct && target) {\n            sql = `SELECT COUNT(DISTINCT \"${target}\") AS total FROM ${datasetId} ${whereClause};`;\n          } else if (target && target.toLowerCase().startsWith(\"distinct:\")) {\n            const fieldRaw = target.split(\":\")[1];\n            const field = normalizeField(fieldRaw);\n            sql = `SELECT COUNT(DISTINCT \"${field}\") AS total FROM ${datasetId} ${whereClause};`;\n          } else {\n            sql = `SELECT COUNT(${isDistinct ? 'DISTINCT *' : '*'}) AS total FROM ${datasetId} ${whereClause};`;\n          }\n          break;\n\n  case \"sum\":\n  case \"avg\":\n  case \"min\":\n  case \"max\":\n    if (!target) throw new Error(`Operation ${baseOp} requires a target field.`);\n    const agg = baseOp.toUpperCase();\n\n    // \u2b07\ufe0f Columns Aggregation for Cadders\n    if (baseOp === 'avg' && target && input.raw_query) {\n    const rawQuery = input.raw_query.toLowerCase(); // \u2705 Added declaration\n    \n    const impliesPerCadder = \n      /average.*(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      /(cadder|person|worker|seller|staff).*average/i.test(rawQuery) ||\n      /per\\s+(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      /each\\s+(cadder|person|worker|seller|staff)/i.test(rawQuery) ||\n      input.aggregation_level === 'per_entity';\n    \n    if (impliesPerCadder) {\n      sql = `\n        SELECT AVG(total_sales) AS value\n        FROM (\n          SELECT \"Cadder\", SUM(\"${target}\") AS total_sales\n          FROM ${datasetId}\n          ${whereClause}\n          GROUP BY \"Cadder\"\n        ) AS cadder_totals;\n      `.trim();\n      break;\n    }\n  }\n\n    // \u2b07\ufe0f ENHANCED TEMPORAL AGGREGATION LOGIC HERE\n    if ((baseOp === 'avg' || baseOp === 'sum') && input.temporal_aggregation) {\n      const temporalSqlMap = {\n        'daily': 'DATE(\"Created_At\")',\n        'weekly': 'EXTRACT(WEEK FROM \"table_14\")', \n        'monthly': 'EXTRACT(MONTH FROM \"table_14\")',\n        'quarterly': 'EXTRACT(QUARTER FROM \"table_14\")',\n        'yearly': 'EXTRACT(YEAR FROM \"table_14\")'\n      };\n\n      const temporalGroup = temporalSqlMap[input.temporal_aggregation];\n      if (temporalGroup) {\n        // CHOOSE BETWEEN BREAKDOWN VS AGGREGATED\n        if (input.output_type === 'breakdown') {\n          // BREAKDOWN: List all periods with their values\n          sql = `\n            SELECT ${temporalGroup} as period, \n                   ${baseOp.toUpperCase()}(\"${target}\") AS value\n            FROM ${datasetId}\n            ${whereClause}\n            GROUP BY ${temporalGroup}\n            ORDER BY period;\n          `.trim();\n        } else {\n          // AGGREGATED: Single result (average/total of period totals)\n          sql = `\n            SELECT ${baseOp.toUpperCase()}(period_totals) AS value\n            FROM (\n              SELECT SUM(\"${target}\") AS period_totals\n              FROM ${datasetId}\n              ${whereClause}\n              GROUP BY ${temporalGroup}\n            ) AS temporal_agg;\n          `.trim();\n        }\n         break;\n      }\n    }\n    if (groupBy.length > 0) {\n  // Handle temporal grouping specially\n  const aggSelectFields = [];\n  const groupFields = [];\n  \n  groupBy.forEach(f => {\n    const fLower = f.toLowerCase();\n    \n    if (fLower === 'month' || (fLower === 'created_at' && baseOp !== 'select')) {\n      selectFields.push(`TO_CHAR(\"Created_At\", 'YYYY-MM') AS period`);\n      selectFields.push(`EXTRACT(MONTH FROM \"table_14\")::int AS month_num`);\n      groupFields.push(`TO_CHAR(\"Created_At\", 'YYYY-MM')`);\n      groupFields.push(`EXTRACT(MONTH FROM \"table_14\")`);\n    } else if (fLower === 'year') {\n      selectFields.push(`EXTRACT(YEAR FROM \"table_14\")::int AS year`);\n      groupFields.push(`EXTRACT(YEAR FROM \"table_14\")`);\n    } else if (fLower === 'quarter' || fLower === 'q') {\n      selectFields.push(`EXTRACT(QUARTER FROM \"table_14\")::int AS quarter`);\n      groupFields.push(`EXTRACT(QUARTER FROM \"table_14\")`);\n    } else if (fLower === 'week') {\n      selectFields.push(`EXTRACT(WEEK FROM \"table_14\")::int AS week`);\n      groupFields.push(`EXTRACT(WEEK FROM \"table_14\")`);\n    } else if (fLower === 'day' || fLower === 'date') {\n      selectFields.push(`\"Created_At\"::date AS date`);\n      groupFields.push(`\"Created_At\"::date`);\n    } else {\n      selectFields.push(`\"${f}\"`);\n      groupFields.push(`\"${f}\"`);\n    }\n  });\n  \n  const selectFieldsStr = selectFields.join(\", \");\n  const groupFieldsStr = groupFields.join(\", \");\n\n      let finalOrderBy = orderBy;\n      let finalLimit = limit;\n\n      // Auto-detect ordering for ranking queries\n      if (needsOrdering && !orderBy) {\n        finalOrderBy = isBottomQuery ? \"value ASC\" : \"value DESC\";\n      }\n\n      // Auto-add limit for ranking queries\n      if (needsOrdering && !limit) {\n        finalLimit = 10;\n      }\n  \n      sql = `\n  SELECT ${selectFieldsStr},\n    ${agg}(${isDistinct ? 'DISTINCT ' : ''}\"${target}\") AS value\n  FROM ${datasetId}\n  ${whereClause}\n  GROUP BY ${groupFieldsStr}\n  ${having ? `HAVING ${having}` : \"\"}\n  ${finalOrderBy ? `ORDER BY ${parseOrderBy(finalOrderBy)}` : \"\"}  \n  ${finalLimit ? `LIMIT ${Number(finalLimit)}` : \"\"}; \n`.trim();\n    } else {\n      sql = `SELECT ${agg}(${isDistinct ? 'DISTINCT ' : ''}\"${target}\") AS value FROM ${datasetId} ${whereClause};`;\n    }\n    break;\n  \n  case \"select\":\n  case \"list\":\n  case \"fetch\":\n    const listSelectFields = target ? \n    parseFieldList(target).map(f => {\n      const mappedField = normalizeField(f);\n      return `\"${mappedField}\"`;\n    }).join(\", \") : \n    \"*\";\n  \n  sql = `\n    SELECT ${isDistinct ? 'DISTINCT' : ''} ${listSelectFields}\n    FROM ${datasetId}\n    ${whereClause}\n    ${orderBy ? `ORDER BY ${parseOrderBy(orderBy)}` : \"\"}\n    ${limit ? `LIMIT ${Number(limit)}` : \"\"};\n  `.trim();\n  break;\n  \n  case \"top\":\n  case \"bottom\":\n    if (!target) throw new Error(`Operation ${baseOp} requires a target field for sorting.`);\n    const sortOrder = baseOp === \"top\" ? \"DESC\" : \"ASC\";\n    const topLimit = limit || 10;\n    \n    sql = `\n      SELECT *\n      FROM ${datasetId}\n      ${whereClause}\n      ORDER BY \"${target}\" ${sortOrder}\n      LIMIT ${Number(topLimit)};\n    `.trim();\n    break;\n  \n  case \"group\":\n  case \"groupby\":\n    if (!groupBy || groupBy.length === 0) throw new Error(\"Group operation requires group_by fields.\");\n    \n    const grpSelectFields = groupBy.map(f => `\"${f}\"`).join(\", \");\n    const grpGroupFields = groupBy.map(f => `\"${f}\"`).join(\", \");\n    \n    sql = `\n      SELECT ${grpSelectFields},\n        COUNT(${isDistinct ? 'DISTINCT *' : '*'}) AS count\n        ${target ? `, SUM(\"${target}\") AS total` : ''}\n      FROM ${datasetId}\n      ${whereClause}\n      GROUP BY ${grpGroupFields}\n      ${having ? `HAVING ${having}` : \"\"}\n      ${orderBy ? `ORDER BY ${parseOrderBy(orderBy)}` : \"ORDER BY count DESC\"}\n      ${limit ? `LIMIT ${Number(limit)}` : \"\"};\n    `.trim();\n    break;\n\n  default:\n    sql = `SELECT * FROM ${datasetId} ${whereClause} ${limit ? `LIMIT ${Number(limit)}` : ''};`;\n}\n\n// Final safety check\nif (!sql.trim().toLowerCase().startsWith(\"select\")) {\n  throw new Error(\"Unsafe SQL detected \u2014 only SELECT queries allowed.\");\n}\n\n// Return formatted response\nreturn [{\n  json: {\n    query: sql.trim(),\n    dataset_id: datasetId,\n    meta: {\n      built_by: \"[ID]\",\n      operation: baseOp,\n      is_distinct: isDistinct,\n      target_field: target,\n      group_fields: groupBy,\n      date_filters: {\n        year: yearValue,\n        month: Array.isArray(monthValue) ? monthValue : monthValue,\n        week: Array.isArray(weekValue) ? weekValue : weekValue\n      },\n      intent_summary: `${baseOp.toUpperCase()}${isDistinct ? ' DISTINCT' : ''} on ${target || \"rows\"}${\n        groupBy.length ? \" grouped by \" + groupBy.join(\", \") : \"\"\n      }`,\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4704,
+        -656
+      ],
+      "id": "__NODE_39__",
+      "name": "Build Safe SQL Query1"
+    },
+    {
+      "parameters": {
+        "content": "# Function : In-chat test",
+        "height": 544,
+        "width": 2256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5744,
+        -736
+      ],
+      "id": "__NODE_40__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Function : Whatsapp Test",
+        "height": 464,
+        "width": 2800,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5744,
+        -1216
+      ],
+      "id": "__NODE_41__",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Function: Docs RAG",
+        "height": 352,
+        "width": 1248,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5744,
+        -1600
+      ],
+      "id": "__NODE_42__",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -5664,
+        -1136
+      ],
+      "id": "__NODE_43__",
+      "name": "WhatsApp Trigger",
+      "webhookId": "__WEBHOOK_3__",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "__WHATSAPP_CRED_ID",
+          "name": "WhatsApp API Credentials"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres PGVector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Postgres PGVector Store2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres PGVector Store2": {
+      "main": [
+        []
+      ]
+    },
+    "Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Created FIle": {
+      "main": [
+        [
+          {
+            "node": "Delete old vectors & Upsert metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Documents": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Postgres PGVector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Postgres PGVector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text1": {
+      "main": [
+        [
+          {
+            "node": "Postgres PGVector Store2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Intent Parsing & Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Build Safe SQL Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete old vectors & Upsert metadata": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result Formatter": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "main": [
+        []
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Auth List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth List": {
+      "main": [
+        [
+          {
+            "node": "Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Structureddb": {
+      "main": [
+        [
+          {
+            "node": "Result Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Parsing & Validation": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Safe SQL Query": {
+      "main": [
+        [
+          {
+            "node": "Query Structureddb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres PGVector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Documents1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Build Safe SQL Query1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Result Formatter1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Structureddb1": {
+      "main": [
+        [
+          {
+            "node": "Result Formatter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Parsing & Validation1": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Safe SQL Query1": {
+      "main": [
+        [
+          {
+            "node": "Query Structureddb1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Intent Parsing & Validation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "__VERSION_ID__",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "__INSTANCE_ID__"
+  },
+  "id": "__WORKFLOW_ID__",
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-03-21T15:18:00.867216+00:00",
+    "original_name": "AI Bot",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "the": "table_1",
+      "EITHER": "table_2",
+      "allowed_docs": "table_3",
+      "memory": "table_4",
+      "document_metadata": "table_5",
+      "handbook": "table_6",
+      "embedded": "table_7",
+      "n8n_vectors": "table_8",
+      "user_access": "table_9",
+      "AI": "table_10",
+      "document_metadata.": "table_11",
+      "operation": "table_12",
+      "Q1": "table_13",
+      "Created_At": "table_14",
+      "raw": "table_15"
+    },
+    "columns_renamed": {
+      "title": "column_1",
+      "phone_number": "column_2"
+    }
+  }
+}

@@ -1,0 +1,799 @@
+{
+  "name": "TreasAlert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -240,
+        304
+      ],
+      "id": "__NODE_1__",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csv = $input.item.json.data;\nconst lines = csv.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.replace(/\"/g, '').trim());\n\n// Parse all rows\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (const char of lines[i]) {\n    if (char === '\"') { inQuotes = !inQuotes; }\n    else if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; }\n    else { current += char; }\n  }\n  values.push(current.trim());\n  if (values.length >= headers.length) {\n    const row = {};\n    headers.forEach((h, idx) => row[h] = values[idx] || '');\n    rows.push(row);\n  }\n}\n\n// \u2705 FIX 1: Parse \"DD/MM/YYYY HH:MM:SS\" or \"DD/MM/YYYY\" into a real Date\nconst parseDateTime = (str) => {\n  const [datePart, timePart = '00:00:00'] = (str || '').trim().split(' ');\n  const [d, m, y] = datePart.split('/');\n  return new Date(`${y}-${m}-${d}T${timePart}`);\n};\n\n// Get today's date in DD/MM/YYYY\nconst now = new Date();\nconst today = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;\n\n// \u2705 FIX 1: Filter by date portion only (handles datetime values in date column)\nconst todayRows = rows.filter(r => (r.date || '').trim().substring(0, 10) === today);\n\n// \u2705 FIX 1 + FIX 2: Sort today's rows by full datetime before calculating balances\nconst sortedToday = [...todayRows].sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n\n// \u2705 FIX 3: Explicit credit/debit check \u2014 unknown types are ignored, not misclassified\nlet totalCredit = 0, totalDebit = 0, creditCount = 0, debitCount = 0;\nsortedToday.forEach(r => {\n  const amt = parseFloat(r.amount) || 0;\n  const type = (r.alert_type || '').toLowerCase();\n  if (type === 'credit') { totalCredit += amt; creditCount++; }\n  else if (type === 'debit') { totalDebit += amt; debitCount++; }\n});\n\n// \u2705 FIX 2: Opening balance \u2014 prior rows sorted by datetime, pick the last one\nconst priorRows = rows.filter(r => (r.date || '').trim().substring(0, 10) < today);\nconst sortedPrior = [...priorRows].sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\nconst openingBalance = sortedPrior.length > 0\n  ? parseFloat(sortedPrior[sortedPrior.length - 1].closing_balance) || 0\n  : 0;\n\n// \u2705 FIX 2: Closing balance \u2014 last row of today after datetime sort\nconst closingBalance = sortedToday.length > 0\n  ? parseFloat(sortedToday[sortedToday.length - 1].closing_balance) || 0\n  : 0;\n\nconst fmt = (n) => '\u20a6' + parseFloat(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// Build full HTML\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { font-family: Arial, sans-serif; color: #1e293b; padding: 40px; }\n  h1 { font-size: 24px; margin-bottom: 4px; }\n  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 32px; }\n  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px; }\n  .card { border-radius: 12px; padding: 20px 24px; background: #f8fafc; border: 1px solid #e2e8f0; }\n  .card-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 8px; }\n  .card-value { font-size: 26px; font-weight: 700; color: #1e293b; }\n  .card-meta { font-size: 12px; color: #94a3b8; margin-top: 6px; }\n  .card.debit .card-value { color: #ef4444; }\n  .card.credit .card-value { color: #10b981; }\n  .net-flow { margin-top: 24px; padding: 16px 24px; background: #f1f5f9; border-radius: 10px; font-size: 14px; color: #475569; }\n  .net-flow span { font-weight: 700; }\n  .footer { margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }\n</style>\n</head>\n<body>\n  <h1>\ud83d\udcca Daily Transaction Summary</h1>\n  <p class=\"subtitle\">Date: ${today} &nbsp;|&nbsp; Generated at 7:00 PM</p>\n  <div class=\"cards\">\n    <div class=\"card\">\n      <div class=\"card-label\">Opening Balance</div>\n      <div class=\"card-value\">${fmt(openingBalance)}</div>\n    </div>\n    <div class=\"card debit\">\n      <div class=\"card-label\">Total Debit</div>\n      <div class=\"card-value\">${fmt(totalDebit)}</div>\n      <div class=\"card-meta\">${debitCount} transaction${debitCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card credit\">\n      <div class=\"card-label\">Total Credit</div>\n      <div class=\"card-value\">${fmt(totalCredit)}</div>\n      <div class=\"card-meta\">${creditCount} transaction${creditCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card\">\n      <div class=\"card-label\">Closing Balance</div>\n      <div class=\"card-value\">${fmt(closingBalance)}</div>\n    </div>\n  </div>\n  <div class=\"net-flow\">\n    Net Flow: <span style=\"color: ${(totalCredit - totalDebit) >= 0 ? '#10b981' : '#ef4444'}\">${fmt(totalCredit - totalDebit)}</span>\n    &nbsp;&nbsp;|&nbsp;&nbsp; Total Transactions: <span>${sortedToday.length}</span>\n  </div>\n  <div class=\"footer\">This is an automated daily report. Do not reply to this email.</div>\n</body>\n</html>`;\n\nconst pdfPayload = JSON.stringify({\n  source: html,\n  landscape: false,\n  use_print: true,\n  format: \"A4\"\n});\n\nreturn { json: { html, pdfPayload, today, totalCredit, totalDebit, closingBalance } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -672
+      ],
+      "id": "__NODE_2__",
+      "name": "Build PDF Report Data",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "sendTo": "[EMAIL]",
+        "subject": "=Daily Transaction Summary \u2013 {{ $('Build PDF Report Data1').item.json.today }}",
+        "message": "Dear sir,\n\nPlease find attached the summary reports for today. Click the link below to see a more detailed dashboard.\n\n[URL]\n\nBest Regards,\nTreasAlert.",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1136,
+        -688
+      ],
+      "id": "__NODE_3__",
+      "name": "Email PDF Report",
+      "webhookId": "__WEBHOOK_1__",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "treas",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        112
+      ],
+      "id": "__NODE_4__",
+      "name": "Receive SMS Alert",
+      "webhookId": "__WEBHOOK_2__"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "TreasAlert",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $json.datetime }}",
+            "alert_type": "={{ $json.alertType }}",
+            "amount": "={{ $json.amount }}",
+            "description": "={{ $json.description }}",
+            "reference": "={{ $json.ref }}",
+            "balance": "={{ $json.balance }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "alert_type",
+              "displayName": "alert_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reference",
+              "displayName": "reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "balance",
+              "displayName": "balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "id": "__NODE_5__",
+      "name": "Log to Google Sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -672
+      ],
+      "id": "__NODE_6__",
+      "name": "WhatsApp Trigger",
+      "webhookId": "__WEBHOOK_3__",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "REDACTED_NUMERIC_ID",
+        "recipientPhoneNumber": "REDACTED_NUMERIC_ID",
+        "template": "daily_transaction|en",
+        "components": {
+          "component": [
+            {
+              "type": "button",
+              "sub_type": "quick_reply",
+              "index": 0,
+              "buttonParameters": {}
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -896,
+        -432
+      ],
+      "id": "__NODE_7__",
+      "name": "Send template",
+      "webhookId": "__WEBHOOK_4__",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "__WHATSAPP_CRED_ID",
+          "name": "WhatsApp API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "=2126223825",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Hello GME, \n\nKindly find attached the daily transaction report for today. Click this link to view a detailed dashboard [URL]\n\nBest Regards"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        224
+      ],
+      "id": "__NODE_8__",
+      "name": "Send a document",
+      "webhookId": "__WEBHOOK_5__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1152,
+        -400
+      ],
+      "id": "__NODE_9__",
+      "name": "Telegram Trigger",
+      "webhookId": "__WEBHOOK_6__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=[URL]",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -32,
+        304
+      ],
+      "id": "__NODE_10__",
+      "name": "Fetch Transactions CSV"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "REDACTED"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.pdfPayload }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        384,
+        304
+      ],
+      "id": "__NODE_11__",
+      "name": "Convert HTML to PDF"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.body;\n\nconst timeRaw = raw.time; \nconst keyRaw = raw.key;   \n\nconst senderMatch = keyRaw.match(/From\\s*:\\s*(.+)/i);\nconst bodyMatch = keyRaw.match(/Body:\\s*([\\s\\S]*)/i);\nconst body = bodyMatch ? bodyMatch[1].trim().replace(/\\n/g, ' ') : \"N/A\";\n\n// Extract time from table_1 e.g. \"02/27, 11:39 AM\"\nconst timePart = timeRaw.split(', ')[1] || '';\n\n// Extract date from table_2 e.g. \"Date:27/02/2026\"\nconst dateInBody = body.match(/Date[:\\s]+(\\d{2}\\/\\d{2}\\/\\d{4})/i);\nconst datePart = dateInBody ? dateInBody[1] : 'N/A';\n\n// Combine into \"27/02/2026 11:39 AM\"\nconst fullDateTime = datePart !== 'N/A' && timePart \n  ? `${datePart} ${timePart.trim()}` \n  : datePart;\n\nreturn {\n  json: {\n    date: fullDateTime,  // \"27/02/2026 11:39 AM\"\n    sender: senderMatch ? senderMatch[1].trim() : \"N/A\",\n    body: body\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        -848
+      ],
+      "id": "__NODE_12__",
+      "name": "Extract Date & Body1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.body.toLowerCase() }}",
+              "rightValue": "credit",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.body.toLowerCase() }}",
+              "rightValue": "debit",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.body.toLowerCase() }}",
+              "rightValue": "dr",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.body.toLowerCase() }}",
+              "rightValue": "cr",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        -848
+      ],
+      "id": "__NODE_13__",
+      "name": "Is Bank Transaction?1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "=You are a bank alert parser. Your job is to extract structured transaction data from table_3 alert emails and return it as clean JSON \u2014 nothing else. No explanations, no markdown, no preamble.\n\nExtract the following fields:\n\n- type: The transaction type. Must be exactly \"Credit\" or \"Debit\".\n- amount: The transaction amount as a plain number string (e.g., \"10000.00\"). No currency symbols or commas.\n- balance: The available balance after the transaction as a plain number string (e.g., \"10017.57\"). No currency symbols or commas.\n- date: Use the date field from table_4 input exactly as provided. Do not modify it.\n  Use the date provided in the input, not from table_4 email body.\n- description: A cleaned, readable version of the transaction description. Expand abbreviations where possible and remove special characters. Example: \"Paystack/withdrawalAndromeda Technology So\" \u2192 \"Paystack - Andromeda Technology\".\n\nIf a field cannot be found in the email, set its value to \"N/A\".\nAlways return valid JSON in this exact structure:\n{\n  \"type\": \"\",\n  \"amount\": \"\",\n  \"balance\": \"\",\n  \"date\": \"\",\n  \"description\": \"\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -528,
+        -864
+      ],
+      "id": "__NODE_14__",
+      "name": "Parse Alert with AI1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        -656
+      ],
+      "id": "__NODE_15__",
+      "name": "Groq LLM1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "N/A",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        128,
+        -864
+      ],
+      "id": "__NODE_16__",
+      "name": "Is Valid Transaction?1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.output;\nconst cleaned = raw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\nconst parsed = JSON.parse(cleaned);\nreturn { json: parsed };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -864
+      ],
+      "id": "__NODE_17__",
+      "name": "Parse AI Output1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.body;\n\nconst keyRaw = raw.key;\nconst timeRaw = raw.time;\n\n// Extract sender (From)\nconst fromMatch = keyRaw.match(/From\\s*:\\s*(.+)/i);\nconst sender = fromMatch ? fromMatch[1].trim() : \"N/A\";\n\n// Extract account number\nconst accMatch = keyRaw.match(/Acc\\s*:\\s*(\\S+)/i);\nconst account = accMatch ? accMatch[1].trim() : \"N/A\";\n\n// Determine alert type and amount (Debit or Credit)\nconst debitMatch = keyRaw.match(/Debit\\s*:\\s*[A-Z]*([0-9,]+(?:\\.[0-9]{1,2})?)/i);\nconst creditMatch = keyRaw.match(/Credit\\s*:\\s*[A-Z]*([0-9,]+(?:\\.[0-9]{1,2})?)/i);\n\nlet alertType = \"N/A\";\nlet amount = \"N/A\";\n\nif (debitMatch) {\n  alertType = \"Debit\";\n  amount = debitMatch[1].replace(/,/g, '');\n} else if (creditMatch) {\n  alertType = \"Credit\";\n  amount = creditMatch[1].replace(/,/g, '');\n}\n\n// Extract description\nconst descMatch = keyRaw.match(/Desc\\s*:\\s*(.+)/i);\nconst description = descMatch ? descMatch[1].trim() : \"N/A\";\n\n// Extract reference\nconst refMatch = keyRaw.match(/Ref\\s*:\\s*(\\S+)/i);\nconst ref = refMatch ? refMatch[1].trim() : \"N/A\";\n\n// Extract date from table_2, fallback to timeRaw\nconst dateMatch = keyRaw.match(/Date\\s*:\\s*(\\d{2}\\/\\d{2}\\/\\d{4})\\s+(\\d{1,2}:\\d{2}\\s*[APM]{2})/i);\nlet datetime = \"N/A\";\nif (dateMatch) {\n  datetime = `${dateMatch[1]} ${dateMatch[2].trim()}`;\n} else if (timeRaw) {\n  datetime = timeRaw;\n}\n\n// Extract balance\nconst balMatch = keyRaw.match(/Bal\\s*:\\s*[A-Z]*([0-9,]+(?:\\.[0-9]{1,2})?)/i);\nconst balance = balMatch ? balMatch[1].replace(/,/g, '') : \"N/A\";\n\nreturn {\n  json: {\n    sender,\n    account,\n    alertType,\n    amount,\n    description,\n    ref,\n    datetime,\n    balance\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        112
+      ],
+      "id": "__NODE_18__",
+      "name": "Extract COntent"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.alertType }}",
+              "rightValue": "N/A",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        112
+      ],
+      "id": "__NODE_19__",
+      "name": "Is Valid Transaction?"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 576,
+        "width": 1056
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -272,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_20__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csv = $input.item.json.data;\nconst lines = csv.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.replace(/\"/g, '').trim());\n\n// Parse all rows\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (const char of lines[i]) {\n    if (char === '\"') { inQuotes = !inQuotes; }\n    else if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; }\n    else { current += char; }\n  }\n  values.push(current.trim());\n  if (values.length >= headers.length) {\n    const row = {};\n    headers.forEach((h, idx) => row[h] = values[idx] || '');\n    rows.push(row);\n  }\n}\n\n// \u2500\u2500 DateTime parser: handles \"DD/MM/YYYY HH:MM AM/PM\" or plain \"DD/MM/YYYY\" \u2500\u2500\nfunction parseDateTime(str) {\n  if (!str) return new Date(0);\n  const parts = str.trim().split(' ');\n  const [d, m, y] = parts[0].split('/').map(Number);\n  let hours = 0, minutes = 0;\n  if (parts[1]) {\n    const [h, min] = parts[1].split(':').map(Number);\n    hours = h;\n    minutes = min;\n    const meridiem = (parts[2] || '').toUpperCase();\n    if (meridiem === 'PM' && hours !== 12) hours += 12;\n    if (meridiem === 'AM' && hours === 12) hours = 0;\n  }\n  return new Date(y, m - 1, d, hours, minutes);\n}\n\n// Get today's date boundaries\nconst now = new Date();\nconst todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);\nconst todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);\nconst today = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;\n\n// Filter and sort today's transactions by datetime\nconst todayRows = rows\n  .filter(r => {\n    const dt = parseDateTime(r.date || '');\n    return dt >= todayStart && dt <= todayEnd;\n  })\n  .sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n\n// All prior rows (before today), sorted by datetime ascending\nconst priorRows = rows\n  .filter(r => parseDateTime(r.date || '') < todayStart)\n  .sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n\n// Calculate summary\nlet totalCredit = 0, totalDebit = 0, creditCount = 0, debitCount = 0;\ntodayRows.forEach(r => {\n  const amt = parseFloat(r.amount) || 0;\n  if ((r.alert_type || '').toLowerCase() === 'credit') { totalCredit += amt; creditCount++; }\n  else { totalDebit += amt; debitCount++; }\n});\n\n// Opening balance = closing_balance of last prior transaction (by datetime)\nconst openingBalance = priorRows.length > 0\n  ? parseFloat(priorRows[priorRows.length - 1].closing_balance) || 0\n  : 0;\n\n// Closing balance = closing_balance of last today transaction (by datetime)\nconst closingBalance = todayRows.length > 0\n  ? parseFloat(todayRows[todayRows.length - 1].closing_balance) || 0\n  : 0;\n\nconst fmt = (n) => '\u20a6' + parseFloat(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// Build full HTML\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { font-family: Arial, sans-serif; color: #1e293b; padding: 40px; }\n  h1 { font-size: 24px; margin-bottom: 4px; }\n  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 32px; }\n  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px; }\n  .card { border-radius: 12px; padding: 20px 24px; background: #f8fafc; border: 1px solid #e2e8f0; }\n  .card-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 8px; }\n  .card-value { font-size: 26px; font-weight: 700; color: #1e293b; }\n  .card-meta { font-size: 12px; color: #94a3b8; margin-top: 6px; }\n  .card.debit .card-value { color: #ef4444; }\n  .card.credit .card-value { color: #10b981; }\n  .net-flow { margin-top: 24px; padding: 16px 24px; background: #f1f5f9; border-radius: 10px; font-size: 14px; color: #475569; }\n  .net-flow span { font-weight: 700; }\n  .footer { margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }\n</style>\n</head>\n<body>\n  <h1>\ud83d\udcca Daily Transaction Summary</h1>\n  <p class=\"subtitle\">Date: ${today} &nbsp;|&nbsp; Generated at 7:00 PM</p>\n  <div class=\"cards\">\n    <div class=\"card\">\n      <div class=\"card-label\">Opening Balance</div>\n      <div class=\"card-value\">${fmt(openingBalance)}</div>\n    </div>\n    <div class=\"card debit\">\n      <div class=\"card-label\">Total Debit</div>\n      <div class=\"card-value\">${fmt(totalDebit)}</div>\n      <div class=\"card-meta\">${debitCount} transaction${debitCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card credit\">\n      <div class=\"card-label\">Total Credit</div>\n      <div class=\"card-value\">${fmt(totalCredit)}</div>\n      <div class=\"card-meta\">${creditCount} transaction${creditCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card\">\n      <div class=\"card-label\">Closing Balance</div>\n      <div class=\"card-value\">${fmt(closingBalance)}</div>\n    </div>\n  </div>\n  <div class=\"net-flow\">\n    Net Flow: <span style=\"color: ${(totalCredit - totalDebit) >= 0 ? '#10b981' : '#ef4444'}\">${fmt(totalCredit - totalDebit)}</span>\n    &nbsp;&nbsp;|&nbsp;&nbsp; Total Transactions: <span>${todayRows.length}</span>\n  </div>\n  <div class=\"footer\">This is an automated daily report. Do not reply to this email.</div>\n</body>\n</html>`;\n\n// Pre-serialize payload for PDFShift\nconst pdfPayload = JSON.stringify({\n  source: html,\n  landscape: false,\n  use_print: true,\n  format: \"A4\"\n});\n\nreturn { json: { html, pdfPayload, today, totalCredit, totalDebit, closingBalance } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        -16
+      ],
+      "id": "__NODE_21__",
+      "name": "Build PDF Report Data2",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const csv = $input.item.json.data;\nconst lines = csv.split('\\n').filter(l => l.trim());\nconst headers = lines[0].split(',').map(h => h.replace(/\"/g, '').trim());\n \n// Parse all rows\nconst rows = [];\nfor (let i = 1; i < lines.length; i++) {\n  const values = [];\n  let current = '';\n  let inQuotes = false;\n  for (const char of lines[i]) {\n    if (char === '\"') { inQuotes = !inQuotes; }\n    else if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; }\n    else { current += char; }\n  }\n  values.push(current.trim());\n  if (values.length >= headers.length) {\n    const row = {};\n    headers.forEach((h, idx) => row[h] = values[idx] || '');\n    rows.push(row);\n  }\n}\n \n// DateTime parser: handles \"DD/MM/YYYY HH:MM AM/PM\" or plain \"DD/MM/YYYY\"\nfunction parseDateTime(str) {\n  if (!str) return new Date(0);\n  const parts = str.trim().split(' ');\n  const [d, m, y] = parts[0].split('/').map(Number);\n  let hours = 0, minutes = 0;\n  if (parts[1]) {\n    const [h, min] = parts[1].split(':').map(Number);\n    hours = h;\n    minutes = min;\n    const meridiem = (parts[2] || '').toUpperCase();\n    if (meridiem === 'PM' && hours !== 12) hours += 12;\n    if (meridiem === 'AM' && hours === 12) hours = 0;\n  }\n  return new Date(y, m - 1, d, hours, minutes);\n}\n \nfunction getDayKey(dateStr) {\n  return dateStr.trim().split(' ')[0]; // \"DD/MM/YYYY\"\n}\n \n// Normalize rows\nconst allTx = rows.map(r => ({\n  date:    r.date || '',\n  type:    (r.alert_type || '').toLowerCase().trim(),\n  amount:  parseFloat(r.amount) || 0,\n  balance: parseFloat(r.balance) || 0,\n  description: r.description || '',\n  reference:   r.reference || ''\n})).sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n \n// \u2500\u2500 Seed balance: back-calculate from table_5 first transaction ever \u2500\u2500\nconst firstTx = allTx[0];\nlet seedBalance = 0;\nif (firstTx) {\n  seedBalance = firstTx.type === 'debit'\n    ? firstTx.balance + firstTx.amount\n    : firstTx.balance - firstTx.amount;\n}\n \n// Group all transactions by day\nconst dayMap = {};\nallTx.forEach(tx => {\n  const day = getDayKey(tx.date);\n  if (!dayMap[day]) dayMap[day] = [];\n  dayMap[day].push(tx);\n});\n \n// Sort unique days ascending\nconst allDays = Object.keys(dayMap).sort((a, b) => {\n  const [da, ma, ya] = a.split('/').map(Number);\n  const [db, mb, yb] = b.split('/').map(Number);\n  return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);\n});\n \n// Chain: opening \u2192 closing per day\n// Closing = last transaction's bank balance (col F) sorted by datetime\nconst dayBalances = {};\nlet runningBalance = seedBalance;\nallDays.forEach(day => {\n  const dayTxs = [...dayMap[day]].sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n  const dayClose = dayTxs[dayTxs.length - 1].balance;\n  dayBalances[day] = { opening: runningBalance, closing: dayClose };\n  runningBalance = dayClose;\n});\n \n// \u2500\u2500 Today's figures \u2500\u2500\nconst now = new Date();\nconst todayKey = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;\nconst todayStr = todayKey;\n \nconst todayTxs = (dayMap[todayKey] || []).sort((a, b) => parseDateTime(a.date) - parseDateTime(b.date));\n \nlet totalCredit = 0, totalDebit = 0, creditCount = 0, debitCount = 0;\ntodayTxs.forEach(r => {\n  if (r.type === 'credit') { totalCredit += r.amount; creditCount++; }\n  else if (r.type === 'debit') { totalDebit += r.amount; debitCount++; }\n});\n \n// Opening = previous day's closing, or seed if today is first day\nconst daysBeforeToday = allDays.filter(d => {\n  const [dd, dm, dy] = d.split('/').map(Number);\n  return new Date(dy, dm-1, dd) < new Date(now.getFullYear(), now.getMonth(), now.getDate());\n});\nconst openingBalance = daysBeforeToday.length > 0\n  ? dayBalances[daysBeforeToday[daysBeforeToday.length - 1]].closing\n  : seedBalance;\n \n// Closing = last transaction's balance today, or opening if no transactions\nconst closingBalance = todayTxs.length > 0\n  ? todayTxs[todayTxs.length - 1].balance\n  : openingBalance;\n \nconst fmt = (n) => '\u20a6' + parseFloat(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n \n// Build HTML for PDF\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { font-family: Arial, sans-serif; color: #1e293b; padding: 40px; }\n  h1 { font-size: 24px; margin-bottom: 4px; }\n  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 32px; }\n  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 32px; }\n  .card { border-radius: 12px; padding: 20px 24px; background: #f8fafc; border: 1px solid #e2e8f0; }\n  .card-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; margin-bottom: 8px; }\n  .card-value { font-size: 26px; font-weight: 700; color: #1e293b; }\n  .card-meta { font-size: 12px; color: #94a3b8; margin-top: 6px; }\n  .card.debit .card-value { color: #ef4444; }\n  .card.credit .card-value { color: #10b981; }\n  .net-flow { margin-top: 24px; padding: 16px 24px; background: #f1f5f9; border-radius: 10px; font-size: 14px; color: #475569; }\n  .net-flow span { font-weight: 700; }\n  .footer { margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }\n</style>\n</head>\n<body>\n  <h1>\ud83d\udcca Daily Transaction Summary</h1>\n  <p class=\"subtitle\">Date: ${todayStr} &nbsp;|&nbsp; Generated at 6:00 PM</p>\n  <div class=\"cards\">\n    <div class=\"card\">\n      <div class=\"card-label\">Opening Balance</div>\n      <div class=\"card-value\">${fmt(openingBalance)}</div>\n    </div>\n    <div class=\"card debit\">\n      <div class=\"card-label\">Total Debit</div>\n      <div class=\"card-value\">${fmt(totalDebit)}</div>\n      <div class=\"card-meta\">${debitCount} transaction${debitCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card credit\">\n      <div class=\"card-label\">Total Credit</div>\n      <div class=\"card-value\">${fmt(totalCredit)}</div>\n      <div class=\"card-meta\">${creditCount} transaction${creditCount !== 1 ? 's' : ''}</div>\n    </div>\n    <div class=\"card\">\n      <div class=\"card-label\">Closing Balance</div>\n      <div class=\"card-value\">${fmt(closingBalance)}</div>\n    </div>\n  </div>\n  <div class=\"net-flow\">\n    Net Flow: <span style=\"color: ${(totalCredit - totalDebit) >= 0 ? '#10b981' : '#ef4444'}\">${fmt(totalCredit - totalDebit)}</span>\n    &nbsp;&nbsp;|&nbsp;&nbsp; Total Transactions: <span>${todayTxs.length}</span>\n  </div>\n  <div class=\"footer\">This is an automated daily report. Do not reply to this email.</div>\n</body>\n</html>`;\n \nconst pdfPayload = JSON.stringify({\n  source: html,\n  landscape: false,\n  use_print: true,\n  format: \"A4\"\n});\n \nreturn { json: { html, pdfPayload, today: todayStr, totalCredit, totalDebit, closingBalance } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        304
+      ],
+      "id": "__NODE_22__",
+      "name": "Build PDF Report Data1"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "=7698738747",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Hello Muna, \n\nKindly find attached the daily transaction report for today. Click this link to view a detailed dashboard [URL]\n\nBest Regards"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        416
+      ],
+      "id": "__NODE_23__",
+      "name": "Send a document1",
+      "webhookId": "__WEBHOOK_7__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-03-12T18:00:00.004+01:00",
+          "Readable date": "March 12th 2026, 6:00:00 pm",
+          "Readable time": "6:00:00 pm",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "March",
+          "Day of month": "12",
+          "Hour": "18",
+          "Minute": "00",
+          "Second": "00",
+          "Timezone": "Africa/Lagos (UTC+01:00)"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Receive SMS Alert": {
+      "main": [
+        [
+          {
+            "node": "Extract COntent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Send a document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a document1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Date & Body1": {
+      "main": [
+        [
+          {
+            "node": "Is Bank Transaction?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Bank Transaction?1": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert with AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert with AI1": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq LLM1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Parse Alert with AI1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output1": {
+      "main": [
+        [
+          {
+            "node": "Is Valid Transaction?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract COntent": {
+      "main": [
+        [
+          {
+            "node": "Is Valid Transaction?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid Transaction?": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transactions CSV": {
+      "main": [
+        [
+          {
+            "node": "Build PDF Report Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PDF Report Data1": {
+      "main": [
+        [
+          {
+            "node": "Convert HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build PDF Report Data2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "__VERSION_ID__",
+  "meta": {
+    "instanceId": "__INSTANCE_ID__"
+  },
+  "id": "__WORKFLOW_ID__",
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-03-21T15:18:01.284922+00:00",
+    "original_name": "TreasAlert",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "timeRaw": "table_1",
+      "body": "table_2",
+      "bank": "table_3",
+      "the": "table_4",
+      "very": "table_5"
+    },
+    "columns_renamed": {}
+  }
+}

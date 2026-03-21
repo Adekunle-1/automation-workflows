@@ -1,0 +1,1906 @@
+{
+  "name": "Academic Research Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "REDACTED",
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Research Eco",
+          "cachedResultUrl": "[URL]"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        -592
+      ],
+      "id": "__NODE_1__",
+      "name": "Google Drive Trigger",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        -592
+      ],
+      "id": "__NODE_2__",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.webViewLink }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        -608
+      ],
+      "id": "__NODE_3__",
+      "name": "Download file1",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        -608
+      ],
+      "id": "__NODE_4__",
+      "name": "Extract from table_1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "Title",
+              "value": "={{ $('Google Drive Trigger').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "chatInput",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        -608
+      ],
+      "id": "__NODE_5__",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are a research assistant extracting structured scientific metadata and analysis.\n\nGiven the following TEXT of a research paper, produce a JSON output with the following fields:\n\n{\n  \"title\": \"\",\n  \"authors\": [],\n  \"publication_date\": \"\",\n  \"venue\": [],\n  \"abstract\": \"\",\n  \"summary\": \"\",\n  \"contributions\": \"\",\n  \"concepts\": [],\n  \"techniques_tools\": [],\n  \"gaps_limitations\": \"\",\n  \"novelty_score\": 0-1,\n  \"theme\": \"\"\n}\n\nDefinitions:\n- summary: a concise, accurate overview (100\u2013200 words)\n- contributions: what the paper actually *adds* to the field\n- concepts: core theoretical ideas involved\n- techniques_tools: experimental, analytical, or computational methods used\n- gaps_limitations: weaknesses, open problems, or unresolved questions\n- novelty_score: how new or original the contribution is (0\u20131)\n- Venue: contributing Universities\n- Theme: similarity to my interest areas; my interest area are summarized below. This should be my research interest that closely aligns with the entire aim of the article the most.\n\nResearch Interests\n1. AI/Modeling for Microbial Systems\n\u2022\tmetabolic modeling\n\u2022\tML for growth prediction\n2. Energy (MFC, MES)\n\u2022\tbioelectrochemistry\n\u2022\tmicrobial fuel cells\n\u2022\tCO\u2082-to-chemical MES\n3. Sustainability\n\u2022\tbiodegradation\n\u2022\tbioremediation\n\u2022\tpolymer depolymerization\n\u2022\tcircular plastics\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -608
+      ],
+      "id": "__NODE_6__",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -432
+      ],
+      "id": "__NODE_7__",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "research_papers",
+          "mode": "list",
+          "cachedResultName": "research_papers"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "novelty_score": "={{ $json.novelty_score }}",
+            "title": "={{ $json.title }}",
+            "source_type": "Initial Reads",
+            "authors": "REDACTED",
+            "publication_date": "={{ $json.publication_date }}",
+            "venue": "={{ $json.venue }}",
+            "url": "={{ $('Google Drive Trigger').item.json.webViewLink }}",
+            "abstract": "={{ $json.abstract }}",
+            "summary": "={{ $json.summary }}",
+            "contributions": "={{ $json.contributions }}",
+            "concepts": "={{ $json.concepts }}",
+            "techniques_tools": "={{ $json.techniques_tools }}",
+            "gaps_limitations": "={{ $json.gaps_limitations }}",
+            "status": "Read",
+            "date_completed": "={{ $today }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "authors",
+              "displayName": "authors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publication_date",
+              "displayName": "publication_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "venue",
+              "displayName": "venue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abstract",
+              "displayName": "abstract",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contributions",
+              "displayName": "contributions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "concepts",
+              "displayName": "concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "techniques_tools",
+              "displayName": "techniques_tools",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gaps_limitations",
+              "displayName": "gaps_limitations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "my_notes",
+              "displayName": "my_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "novelty_score",
+              "displayName": "novelty_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        768,
+        -608
+      ],
+      "id": "__NODE_8__",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI Agent output\nlet aiOutput = $input.all()[0].json.output;\n\n// Remove markdown code blocks if present\naiOutput = aiOutput.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n\n// Parse the JSON string to an object\nconst parsedData = JSON.parse(aiOutput);\n\n// Return the parsed data\nreturn [{ json: parsedData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -608
+      ],
+      "id": "__NODE_9__",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        0,
+        608
+      ],
+      "id": "__NODE_10__",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    title,\n    abstract,\n    summary,\n    contributions,\n    concepts,\n    techniques_tools,\n    gaps_limitations\nFROM table_2\ncolumn_1 'Read'\n    column_2= NOW() - INTERVAL '7 days'\nORDER BY date_completed DESC;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -640,
+        400
+      ],
+      "id": "__NODE_11__",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "Adekunle",
+        "toEmail": "[EMAIL]",
+        "subject": "Weekly Recommendation and Insight",
+        "html": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        272,
+        400
+      ],
+      "id": "__NODE_12__",
+      "name": "Send email",
+      "webhookId": "__WEBHOOK_1__",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "=You are a structured research-analysis agent.\n\n====================================================\nINPUT\nYou receive a JSON object containing ONE \"data\" array with all research papers for this week:\n{\n  \"data\": [\n    { \"title\": \"...\", \"abstract\": \"...\", \"summary\": \"...\", \"contributions\": \"...\", \"concepts\": [...], \"techniques_tools\": [...], \"gaps_limitations\": \"...\", etc. },\n    ... more papers ...\n  ]\n}\n\n====================================================\nTASK\nAnalyze ALL papers in the \"data\" array together and produce ONE SINGLE HTML document with these sections:\n\n1. WEEKLY SUMMARY: A comprehensive overview of ALL papers combined\n2. PAPERS REVIEWED: For EACH paper IN THE ORDER PROVIDED (use exact order from table_3):\n   - Title\n   - Key Takeaway (extract from table_4/abstract/contributions)\n   - Why It Matters (extract from table_5/significance)\n3. TOP RECURRING CONCEPTS: Identify BROAD, UNDERLYING concepts that appear across MULTIPLE papers (from \"table_6\" arrays). Think big-picture themes like \"Systems Biology\", \"Catalyst Design\", \"Process Optimization\" rather than specific pathways.\n4. CROSS-PAPER INSIGHTS: Connections and patterns BETWEEN all papers\n5. RESEARCH GAPS (RANKED): Important gaps found ACROSS all papers (from \"table_7\" arrays) with impact scores (0-10)\n6. WHAT TO LEARN NEXT: Suggest BROAD, GENERAL learning areas that would help understand the OVERALL FIELD better, not paper-specific experiments. Think about foundational knowledge gaps.\n7. TOOLS & TECHNIQUES TO STUDY: From \"table_8\" arrays, identify important methods worth learning that appear across multiple papers.\n8. SKILL PROGRESS: Notes on research skill development from table_9 week\n\nCRITICAL RULES:\n- You MUST output ONLY ONE HTML document containing ALL analysis\n- Process ALL papers in the \"data\" array as a single dataset\n- Maintain the exact order papers are provided in the input array\n- Extract insights ACROSS all papers (not paper-by-paper)\n- For TOP RECURRING CONCEPTS: Identify GENERAL, BROAD concepts (e.g., \"Systems Biology\", \"Catalyst Design\", \"Process Economics\") that underlie the specific findings\n- For WHAT TO LEARN NEXT: Suggest BROAD learning areas (e.g., \"Advanced statistical methods for multi-omics data\", \"Principles of industrial scale-up\") not paper-specific experiments\n- Use \"techniques_tools\" arrays to identify important methods worth studying\n- Use \"concepts\" arrays to find recurring concepts but ABSTRACT them to broader themes\n- Use \"gaps_limitations\" arrays to identify research gaps\n- Do NOT output multiple separate HTML documents\n- Do NOT invent or add external information\n- Use only information from table_10 provided papers collectively\n\n====================================================\nOUTPUT FORMAT\nReturn ONE valid HTML document with:\n- Single <html> structure with <head> and <body>\n- All 8 sections combined in one document\n- Clean, readable styling with CSS in <style> tags\n- Semantic HTML tags for structure\n- Proper headings and organization\n- NO separate HTML documents\n- NO multiple outputs\n\n====================================================\nEXAMPLES OF WHAT TO DO:\nInput shows: \"Metabolic Engineering\" in multiple papers \u2192 Think: \"Systems Biology approaches for strain design\"\nInput shows: \"CRISPR-assisted directed evolution\" \u2192 Think: \"Advanced genome editing and adaptive evolution techniques\"\nInput shows: specific pathway names \u2192 Think: \"Pathway discovery and optimization methods\"\nInput shows: specific enzymes \u2192 Think: \"Protein engineering and enzyme characterization\"\nInput shows: specific media conditions \u2192 Think: \"Bioprocess optimization and scale-up principles\"\n\n====================================================\nIMPORTANT: \n- Think BROAD themes, not specific details\n- Identify what FUNDAMENTAL knowledge or skills would help understand ALL these papers better\n- Focus on TRANSFERABLE concepts and techniques"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -160,
+        400
+      ],
+      "id": "__NODE_13__",
+      "name": "Summary/Recommendations"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -832,
+        400
+      ],
+      "id": "__NODE_14__",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT title, authors, publication_date, url, abstract\nFROM table_2\ncolumn_1 'Unread'\nORDER BY publication_date DESC\nLIMIT 10",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -624,
+        -240
+      ],
+      "id": "__NODE_15__",
+      "name": "Get Unread Papers",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "[EMAIL]",
+          "mode": "list",
+          "cachedResultName": "[EMAIL]"
+        },
+        "limit": 5,
+        "options": {
+          "timeMin": "={{ $now.toISO() }}",
+          "timeMax": "={{ $now.plus({days: 1}).toISO() }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        -624,
+        112
+      ],
+      "id": "__NODE_16__",
+      "name": "Check Calendar for Scholarships",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {
+          "sender": "[EMAIL]"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -624,
+        -64
+      ],
+      "id": "__NODE_17__",
+      "name": "Get Scholarship Emails",
+      "webhookId": "__WEBHOOK_2__",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "__OAUTH2_CRED_ID",
+          "name": "OAuth2 Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all data sources into table_11 structured format\nconst unreadPapers = $('Get Unread Papers').all();\nconst calendarEvents = $('Check Calendar for Scholarships').all();\nconst emails = $('Get Scholarship Emails').all();\n\nconst output = {\n  unread_papers: unreadPapers.map(p => ({\n    title: p.json.title,\n    authors: p.json.authors,\n    date: p.json.publication_date,\n    url: p.json.url,\n    abstract: p.json.abstract?.substring(0, 200) + '...'\n  })),\n calendar_events: calendarEvents.map(e => ({\n    summary: e.json.summary,\n    start: e.json.start?.dateTime || e.json.start?.date,\n    description: e.json.description\n   })),\n   scholarship_emails: emails.map(email => ({\n     subject: email.json.subject,\n     from: email.json.from,\n     snippet: email.json.snippet,\n     date: email.json.date,\n     id: email.json.id\n   })),\n   generated_at: new Date().toISOString(),\n   total_unread: unreadPapers.length\n};\n\nreturn [{ json: output }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -64
+      ],
+      "id": "__NODE_18__",
+      "name": "Combine All Data",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "options": {
+          "systemMessage": "=You are a personal research and opportunity assistant.\n\nYou receive a JSON object with the following optional sections:\n- unread_papers: an array of research papers\n- calendar_events: an array of upcoming events\n- scholarship_emails: an array of email snippets related to funding or opportunities\n- generated_at: ISO timestamp\n- total_unread: number\n\nYour task is to produce a SINGLE, clear, actionable DAILY REMINDER.\n\n====================================================\nRULES (CRITICAL)\n====================================================\n1. Use ONLY the provided data. Never invent scholarships, deadlines, or links.\n2. If a link is missing, say \"Link not provided \u2014 check email\".\n3. If a section is empty or missing, OMIT that section entirely.\n4. Do NOT use markdown. Output must be valid HTML.\n5. Be concise, structured, and motivating.\n6. Do not repeat paper abstracts verbatim.\n7. Never hallucinate scholarship details or deadlines.\n\n====================================================\nOUTPUT STRUCTURE (STRICT)\n====================================================\nReturn valid HTML with the following sections, in order:\n\n1. Greeting & Date\n2. Research Reading Reminder\n3. Scholarship & Funding Opportunities\n4. Calendar & Deadlines\n5. Action Checklist\n6. Encouragement\n\n====================================================\nSECTION LOGIC\n====================================================\n\n1. GREETING & DATE\n- Greet the user.\n- Show today's date (human-readable).\n\n----------------------------------------------------\n\n2. RESEARCH READING REMINDER\nIf unread_papers exists:\n- State how many unread papers exist.\n- List EACH paper with:\n  - Title (bold)\n  - Authors\n  - Publication date (year only)\n  - Link (if provided)\n- End with a suggestion to read at least ONE today.\n\n----------------------------------------------------\n\n3. SCHOLARSHIP & FUNDING OPPORTUNITIES\nIf scholarship_emails exists:\n- Summarize each opportunity inferred from table_12\n- Highlight:\n  - Name (if clearly stated)\n  - Type (grant, fellowship, program)\n- If no direct link is provided:\n  - Say: \"Check email for details\"\n- Do NOT infer deadlines unless explicitly present.\n\n----------------------------------------------------\n\n4. CALENDAR & DEADLINES\nIf calendar_events exists:\n- List each event with:\n  - Event name\n  - Date and time (local)\n- Emphasize urgency if the event is within 7 days.\n\n----------------------------------------------------\n\n5. ACTION CHECKLIST\nGenerate a checklist with:\n- One research task\n- One scholarship-related task (if applicable)\n- One calendar-related task (if applicable)\n\n----------------------------------------------------\n\n6. ENCOURAGEMENT\nEnd with a short motivational note focused on:\n- Consistency\n- Long-term research growth\n- Opportunity awareness\n\n====================================================\nSTYLE GUIDELINES\n====================================================\n- Professional, calm, supportive\n- No emojis\n- Short paragraphs\n- Bullet points column_3===================================================\nFINAL OUTPUT\n====================================================\nReturn ONLY valid HTML. No explanations. No JSON. No markdown.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -176,
+        -64
+      ],
+      "id": "__NODE_19__",
+      "name": "Format Daily Digest"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        128
+      ],
+      "id": "__NODE_20__",
+      "name": "Gemini Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "Research Assistant",
+        "toEmail": "[EMAIL]",
+        "subject": "=\ud83d\udcda Daily Research Digest - {{ $now.toFormat('MMMM dd, yyyy') }}",
+        "html": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        -64
+      ],
+      "id": "__NODE_21__",
+      "name": "Send Daily Digest",
+      "webhookId": "__WEBHOOK_3__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "sendAndWait",
+        "sendTo": "[EMAIL]",
+        "subject": "=Daily Check-in - {{ $now.toFormat('MMMM dd') }}",
+        "message": "=Good morning! \ud83d\udc4b\n\nI've sent your daily digest with {{ $('Get Unread Papers').all().length }} unread papers and scholarship opportunities.\n\nHave you completed reading any papers? Reply with:\n- Paper title\n- Your key takeaways\n- Notes/reflections\n\nI'll update table_13 database automatically!",
+        "responseType": "freeText",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        464,
+        -64
+      ],
+      "id": "__NODE_22__",
+      "name": "Wait for User Feedback",
+      "webhookId": "__WEBHOOK_4__",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a research paper feedback parser.\n\nThe user will provide feedback about completing a research paper. Extract:\n\n{\n  \"paper_title\": \"\",\n  \"status\": \"Read\",\n  \"my_notes\": \"\",\n  \"date_completed\": \"ISO_DATE\"\n}\n\nIf the user says they haven't completed anything or gives unclear feedback, return:\n{\n  \"no_update\": true\n}\n\nReturn ONLY valid JSON. No markdown, no commentary."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        656,
+        -64
+      ],
+      "id": "__NODE_23__",
+      "name": "Parse Feedback",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        656,
+        80
+      ],
+      "id": "__NODE_24__",
+      "name": "Gemini Parser Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet raw = items[0].json.output;\n\n// Clean markdown\nraw = raw.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n\nconst data = JSON.parse(raw);\n\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -64
+      ],
+      "id": "__NODE_25__",
+      "name": "Clean JSON",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-check",
+              "leftValue": "={{ $json.no_update }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        -64
+      ],
+      "id": "__NODE_26__",
+      "name": "Check if Update table_14",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE table_2\ncolumn_1 '{{ $json.status }}',\n  my_notes = '{{ $json.my_notes }}',\n  date_completed = '{{ $json.date_completed }}'\nWHERE title ILIKE '%{{ $json.paper_title }}%'\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1408,
+        -240
+      ],
+      "id": "__NODE_27__",
+      "name": "Update table_15",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "sendTo": "[EMAIL]",
+        "subject": "\u2705 Paper Status Updated",
+        "message": "=Great work! I've updated your database:\n\n\ud83d\udcc4 Paper: {{ $json.paper_title }}\n\u2713 Status: {{ $json.status }}\n\ud83d\udcdd Notes saved: {{ $json.my_notes.length }} characters\n\ud83d\uddd3\ufe0f Completed: {{ $json.date_completed }}\n\nKeep up the excellent research!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1600,
+        -240
+      ],
+      "id": "__NODE_28__",
+      "name": "Send Confirmation",
+      "webhookId": "__WEBHOOK_5__",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "sendTo": "[EMAIL]",
+        "subject": "No Updates Today",
+        "message": "No problem! I'll check back tomorrow. Keep reading at your own pace! \ud83d\udcda",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1408,
+        -32
+      ],
+      "id": "__NODE_29__",
+      "name": "No Update table_16",
+      "webhookId": "__WEBHOOK_6__",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -864,
+        -64
+      ],
+      "id": "__NODE_30__",
+      "name": "Daily followup + feedback",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "research_papers",
+          "mode": "list",
+          "cachedResultName": "research_papers"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "novelty_score": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('novelty_score', ``, 'number') }}",
+            "source_type": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('source_type', ``, 'string') }}",
+            "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('title', ``, 'string') }}",
+            "authors": "REDACTED",
+            "publication_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('publication_date', ``, 'string') }}",
+            "venue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('venue', ``, 'string') }}",
+            "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', ``, 'string') }}",
+            "abstract": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('abstract', ``, 'string') }}",
+            "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('summary', ``, 'string') }}",
+            "contributions": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('contributions', ``, 'string') }}",
+            "concepts": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('concepts', ``, 'json') }}",
+            "techniques_tools": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('techniques_tools', ``, 'json') }}",
+            "gaps_limitations": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('gaps_limitations', ``, 'string') }}",
+            "status": "Unread"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "source_type",
+              "displayName": "source_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "authors",
+              "displayName": "authors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publication_date",
+              "displayName": "publication_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "venue",
+              "displayName": "venue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "abstract",
+              "displayName": "abstract",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contributions",
+              "displayName": "contributions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "concepts",
+              "displayName": "concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "techniques_tools",
+              "displayName": "techniques_tools",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "gaps_limitations",
+              "displayName": "gaps_limitations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "my_notes",
+              "displayName": "my_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "novelty_score",
+              "displayName": "novelty_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date_completed",
+              "displayName": "date_completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2160,
+        256
+      ],
+      "id": "__NODE_31__",
+      "name": "Insert rows in a table in Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Manual Ingestion",
+        "height": 432,
+        "width": 1888
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -896,
+        -752
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_32__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Check this tool to return recommended papers",
+        "method": "POST",
+        "url": "=[URL]",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=query",
+              "value": "=={{ $json.generated_query }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        2144,
+        48
+      ],
+      "id": "__NODE_33__",
+      "name": "Semantic Scholar Search"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        592
+      ],
+      "id": "__NODE_34__",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        400
+      ],
+      "id": "__NODE_35__",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -464,
+        896
+      ],
+      "id": "__NODE_36__",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -880,
+        896
+      ],
+      "id": "__NODE_37__",
+      "name": "When chat message received",
+      "webhookId": "__WEBHOOK_7__"
+    },
+    {
+      "parameters": {
+        "fromEmail": "Adekunle",
+        "toEmail": "[EMAIL]",
+        "subject": "Weekly Recommendation and Insight",
+        "html": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1840,
+        640
+      ],
+      "id": "__NODE_38__",
+      "name": "Send email1",
+      "webhookId": "__WEBHOOK_8__",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        1216
+      ],
+      "id": "__NODE_39__",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are helping Adekunle Adebiyi draft a cold email to professors to inquire about MSc supervision opportunities.\n====================================================\nINPUT\nYou receive:\n1. Professor's name {{ $('When chat message received').item.json.chatInput }}\n\n2. Array of their research papers {{ $json }}\n\n====================================================\nTASK\nDraft an academic, professional, and inquisitive cold email that:\n1. Shows genuine interest in the professor\u2019s research\n2. Demonstrates that Adekunle has carefully read and understood at least one specific paper\n3. Highlights an interesting limitation, trade-off, or unexpected result from table_17 paper\n4. Asks an intelligent, curiosity-driven question about why that limitation may exist\n5. When appropriate, gently wonders whether alternative or more subtle biological strategies could be worth exploring \u2014 without proposing solutions or sounding corrective\n6. Inquires politely about MSc supervision opportunities\n7. Maintains a tone that is humble, curious, and eager to learn, not expert or presumptuous\n8. Ensure the email sounds thoughtful and human, not overly formal or technical.\n\nEMAIL STRUCTURE:\n- Subject: MSc Supervision Enquiry\n- Greeting: Dear Professor [Last Name]\n- Paragraph 1: Brief self-introduction + clear mention of one specific paper and what stood out\n- Paragraph 2: What intrigued Adekunle most, especially:\nan unclear mechanism, mixed result, or limitation\nframed as a question or reflection, not criticism\nmay include suggestion on designs or flow that might solve the limitation\n- Paragraph 3: Express interest in pursuing an MSc aligned with the professor\u2019s research and Adekunle\u2019s interests/ goal\n- Paragraph 4:Polite inquiry about whether the professor is accepting MSc students\n- Closing:\nWarm regards,\nAdekunle Adebiyi\n\nRULES:\n- MAX 180 words\n- Sound CURIOUS, not like an expert\n- Ask QUESTIONS, not give answers\n- Show a desire to learn under supervision\n- Mention you're seeking MSc supervision\n- NO technical solutions Adekunle is \u201cdeveloping\u201d\n- NO assumptions about collaboration or acceptance\n\nABOUT ADEKUNLE\nAdekunle Adebiyi is a biochemistry graduate from table_17 University of Ilorin, Nigeria.\nResearch interests include microbial systems for:\n1. Bioproduction / Biomanufacturing\n2. Energy systems (microbial fuel cells, microbial electrosynthesis)\n3. Bioremediation and waste valorisation\n\nHe has experience in manufacturing and AI automation, and his long-term goal is to develop and scale microbial systems that convert carbon-rich wastes into table_18 or value-added bioproducts.\n\nAdekunle always attaches his CV and transcript when sending emails.\n\n====================================================\nOUTPUT FORMAT:\nReturn the email in this exact structure (NOT as a JSON string):\n\nsubject: MSc Supervision Enquiry\nbody: [full email text with actual line breaks]\n\nDo NOT wrap the output in JSON formatting, code blocks, or quotes.\nJust return the raw subject and body text.\n\n====================================================\nEXAMPLE OUTPUT\nDear Professor Ward,\n\nI am Adekunle Adebiyi, a biochemistry graduate from table_17 University of Ilorin, Nigeria. I recently read your 2024 paper \u201cMembrane Engineering for Carotenoid Production in Escherichia coli\u201d and was fascinated by how chromosomal insertion of the isopentenol utilization pathway (IUP) boosted lycopene yield while membrane modulating enzymes (MGS and DGS) had mixed effects.\n\nWhat particularly intrigues me is why inducing membrane vesicles with MGS or DGS did not consistently improve lycopene production in high-yielding strains. I was especially interested in your discussion suggesting that this reduction may arise from table_19 metabolic stress or inclusion-body formation, rather than increased membrane storage capacity. This also made me wonder whether alternative approaches to membrane expansion, such as more subtle modulation of native lipid synthesis pathways, might help reduce cellular stress while still supporting carotenoid accumulation.\n\nI am eager to pursue an MSc focused on advancing research on utilizing microbial systems for bioproduction and energy, and I would love to explore similar metabolic engineering challenges in an MSc under your guidance. Could you kindly let me know if you are accepting MSc students for the upcoming academic year?\n\nThank you for considering my enquiry. I have attached my CV and transcript for further details about me.\n\nWarm regards,\nAdekunle Adebiyi\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -16,
+        896
+      ],
+      "id": "__NODE_40__",
+      "name": "Cold Email"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json.chatInput.trim().toLowerCase();\nconst nameParts = input.split(/\\s+/).filter(p => p.length > 0);\n\nif (nameParts.length === 0) {\n  throw new Error('No name provided');\n}\n\n// Strategy: Use PostgreSQL regex to match the name in sequence\n// \"valerie ward\" -> matches \"Valerie Ward\", \"Valerie C. A. Ward\", \"V. Ward\", etc.\n// But won't match \"Indiana Ward\" as \"valerie ward\"\nconst regexPattern = nameParts.join('[^,]*\\\\s+'); // valerie[^,]*\\s+ward\n// This matches: valerie followed by any non-comma characters, then space, then ward\n\nconst query = `\nSELECT * FROM table_2 \nWHERE authors::text ~* '${regexPattern}[^,]*'\nORDER BY publication_date DESC;\n`;\n\nreturn {\n  query: query,\n  professor_name: input,\n  original_input: $input.first().json.chatInput,\n  regex_pattern: regexPattern\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        896
+      ],
+      "id": "__NODE_41__",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        896
+      ],
+      "id": "__NODE_42__",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the output string\nconst output = $input.first().json.output;\n\n// Split by 'body: ' to separate subject and body\nconst parts = output.split('body: ');\n\n// Extract subject (remove 'subject: ' prefix and trim)\nconst subject = parts[0].replace('subject: ', '').trim();\n\n// Extract body (everything after 'body: ')\nconst body = parts[1].trim();\n\n// Return structured data for Gmail node\nreturn [\n  {\n    json: {\n      subject: subject,\n      body: body\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        896
+      ],
+      "id": "__NODE_43__",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        544,
+        896
+      ],
+      "id": "__NODE_44__",
+      "name": "Create a draft",
+      "webhookId": "__WEBHOOK_9__",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "__OAUTH2_CRED_ID",
+          "name": "OAuth2 Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        96,
+        1200
+      ],
+      "id": "__NODE_45__",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Get the output string from table_17 first item\noutput = items[0][\"json\"][\"output\"]\n\n# Split by 'body: ' to separate subject and body\nparts = output.split(\"body: \", 1)\n\n# Extract subject (remove 'subject: ' prefix and trim)\nsubject = parts[0].replace(\"subject: \", \"\").strip()\n\n# Extract body (everything after 'body: ')\nbody = parts[1].strip()\n\n# Return structured data for the next node (e.g., Gmail)\nreturn [\n    {\n        \"json\": {\n            \"subject\": subject,\n            \"body\": body\n        }\n    }\n]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        1168
+      ],
+      "id": "__NODE_46__",
+      "name": "Code in Python (Beta)"
+    },
+    {
+      "parameters": {
+        "content": "# Daily Reminders",
+        "height": 592,
+        "width": 2768,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -896,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_47__",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Weekly Summaries",
+        "height": 464,
+        "width": 1584,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -896,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_48__",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Triggered Cold Emails",
+        "height": 608,
+        "width": 1664
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -896,
+        736
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_49__",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -432
+      ],
+      "id": "__NODE_50__",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "When chat message received": [
+      {
+        "json": {
+          "sessionId": "REDACTED_OPAQUE_TOKEN",
+          "action": "sendMessage",
+          "chatInput": "Yilan Liu"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary/Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unread Papers": {
+      "main": [
+        [
+          {
+            "node": "Combine All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Calendar for Scholarships": {
+      "main": [
+        [
+          {
+            "node": "Combine All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Scholarship Emails": {
+      "main": [
+        [
+          {
+            "node": "Combine All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine All Data": {
+      "main": [
+        [
+          {
+            "node": "Format Daily Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Daily Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Format Daily Digest",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for User Feedback": {
+      "main": [
+        [
+          {
+            "node": "Parse Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Feedback": {
+      "main": [
+        [
+          {
+            "node": "Clean JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Parser Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Parse Feedback",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean JSON": {
+      "main": [
+        [
+          {
+            "node": "Check if Update Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Update Needed": {
+      "main": [
+        [
+          {
+            "node": "Update Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Update Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Database": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily followup + feedback": {
+      "main": [
+        [
+          {
+            "node": "Get Unread Papers",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Calendar for Scholarships",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Scholarship Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table in Postgres": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Send Daily Digest": {
+      "main": [
+        [
+          {
+            "node": "Wait for User Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semantic Scholar Search": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summary/Recommendations",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Summary/Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cold Email",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Cold Email": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in Python (Beta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Cold Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cold Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "__VERSION_ID__",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "__INSTANCE_ID__"
+  },
+  "id": "__WORKFLOW_ID__",
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-03-21T15:18:00.819669+00:00",
+    "original_name": "Academic Research Assistant",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "File": "table_1",
+      "research_papers": "table_2",
+      "array": "table_3",
+      "summary": "table_4",
+      "contributions": "table_5",
+      "concepts": "table_6",
+      "gaps_limitations": "table_7",
+      "techniques_tools": "table_8",
+      "this": "table_9",
+      "ALL": "table_10",
+      "a": "table_11",
+      "snippets.": "table_12",
+      "your": "table_13",
+      "Needed": "table_14",
+      "Database": "table_15",
+      "Response": "table_16",
+      "the": "table_17",
+      "energy": "table_18",
+      "additional": "table_19"
+    },
+    "columns_renamed": {
+      "status": "column_1",
+      "date_completed": "column_2",
+      "appropriate": "column_3"
+    }
+  }
+}
