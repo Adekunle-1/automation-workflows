@@ -1,0 +1,1906 @@
+{
+  "updatedAt": "2026-04-01T09:06:16.305Z",
+  "createdAt": "2026-03-29T21:24:39.225Z",
+  "id": "__WORKFLOW_ID__",
+  "name": "Leave Management System",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# \ud83d\udcdd FLOW 1A: Serve Employee Form\nGET /employee-form \u2192 fetch all employees \u2192 build HTML \u2192 serve as text/html",
+        "height": 300,
+        "width": 1400,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        6128
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_1__",
+      "name": "Note: Flow 1A"
+    },
+    {
+      "parameters": {
+        "content": "# \ud83d\udce4 FLOW 1B: Submit Leave Request\nPOST /submit-leave-request \u2192 validate \u2192 check balance \u2192 append to sheet \u2192 email manager",
+        "height": 300,
+        "width": 1600,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        6528
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_2__",
+      "name": "Note: Flow 1B"
+    },
+    {
+      "parameters": {
+        "content": "# \ud83d\udc64 FLOW 2A: Serve Manager Approval Form\nGET /manager-approval-form?requestId=X \u2192 fetch request+employee \u2192 build HTML \u2192 serve",
+        "height": 300,
+        "width": 1400,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1888,
+        6112
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_3__",
+      "name": "Note: Flow 2A"
+    },
+    {
+      "parameters": {
+        "content": "# \u2705 FLOW 2B: Manager Decision\nPOST /submit-manager-decision \u2192 validate \u2192 update table_1 \u2192 if approved: email HR, if rejected: email employee",
+        "height": 300,
+        "width": 1824,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1888,
+        6512
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_4__",
+      "name": "Note: Flow 2B"
+    },
+    {
+      "parameters": {
+        "content": "# \ud83c\udfdb\ufe0f FLOW 3A: Serve HR Approval Form\nGET /hr-approval-form?requestId=X \u2192 fetch request+employee \u2192 build HTML \u2192 serve",
+        "height": 300,
+        "width": 1400,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        816,
+        6928
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_5__",
+      "name": "Note: Flow 3A"
+    },
+    {
+      "parameters": {
+        "content": "# \ud83c\udfc1 FLOW 3B: HR Final Decision\nPOST /submit-hr-decision \u2192 validate \u2192 update table_1 \u2192 if approved: deduct balance + email employee, if rejected: email employee",
+        "height": 300,
+        "width": 2264,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        816,
+        7328
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_6__",
+      "name": "Note: Flow 3B"
+    },
+    {
+      "parameters": {
+        "path": "employee-form",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_7__",
+      "name": "GET: Employee Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        6240
+      ],
+      "webhookId": "__WEBHOOK_1__"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "__NODE_8__",
+      "name": "Respond: Employee Form",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        6240
+      ]
+    },
+    {
+      "parameters": {
+        "path": "manager-approval-form",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_9__",
+      "name": "GET: Manager Approval Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        6208
+      ],
+      "webhookId": "__WEBHOOK_2__"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_10__",
+      "name": "Get Request (Manager Form)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2192,
+        6208
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_11__",
+      "name": "Get Employee (Manager Form)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2416,
+        6208
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// BUILD: Manager Approval Form\n// Fetches the specific leave request by ID, enriches with employee data, builds HTML\n\nconst allRequests = $('Get Request (Manager Form)').all().map(i => i.json);\nconst allEmployees = $('Get Employee (Manager Form)').all().map(i => i.json);\n\nconst params = $input.first().json.query || {};\nconst requestId = params.requestId || '';\n\nconst req = allRequests.find(r => String(r.RequestID || '').trim() === String(requestId).trim());\nif (!req) throw new Error('Request not found: ' + requestId);\n\nconst emp = allEmployees.find(e => String(e.EmployeeID || '').trim() === String(req.EmployeeID || '').trim());\nif (!emp) throw new Error('Employee not found for request');\n\nconst data = {\n  RequestID: req.RequestID,\n  RequestDate: req.RequestDate || '',\n  EmployeeID: req.EmployeeID,\n  EmployeeName: emp.FullName || '',\n  EmployeeEmail: emp.Email || '',\n  Role: emp.Role || '',\n  Department: emp.Department || '',\n  Branch: emp.Branch || emp.Department || '',\n  ManagerName: emp['Manager Name'] || emp.ManagerName || '',\n  ManagerEmail: emp.ManagerEmail || '',\n  LeaveType: req.LeaveType || '',\n  StartDate: req.StartDate || '',\n  EndDate: req.EndDate || '',\n  ResumptionDate: req.ResumptionDate || '',\n  NumberOfDays: req.NumberOfDays || '',\n  DaysPreviousTaken: req.DaysPreviousTaken || '0',\n  Reliever: req.Reliever || '',\n  ContactAddress: req.ContactAddress || '',\n  PhoneNumber: req.PhoneNumber || '',\n  LeaveBalance: emp.LeaveBalance || '0',\n  TotalLeaveDays: emp.TotalLeaveDays || '0',\n  ManagerStatus: req.ManagerStatus || 'Pending',\n  ManagerComment: req.ManagerComment || '',\n  ManagerDecisionDate: req.ManagerDecisionDate || ''\n};\n\nconst encoded = Buffer.from(JSON.stringify(data)).toString('base64');\n\nconst policyMap = {\n  'Annual Leave': 'Annual leave deducts from table_2 Policy: min 2 weeks notice, recommended March\u2013October.',\n  'Sick Leave': 'Employee must submit medical certificate within 24 hours. Balance not deducted.',\n  'Casual Leave': 'Max 3 days/year. Only after annual leave exhausted.',\n  'Compassionate Leave': 'Max 5 working days/year. Subject to management discretion.',\n  'Maternity Leave': '12 weeks. Medical cert at least 1 month in advance. Min 6 months service required.',\n  'Paternity Leave': '5 working days. Does not affect annual leave balance.',\n  'Leave of Absence': 'Unpaid. Final approval at management discretion.',\n  'Examination Leave': 'Max 5 working days. Employee should use annual leave where possible.'\n};\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n<title>Leave Approval \u2014 Orange Group</title>\n<link href=\"[URL]\" rel=\"stylesheet\">\n<style>\n:root{--orange:#E85D04;--orange-dark:#C44B00;--orange-light:#FFF3ED;--orange-mid:#FFD6B8;\n--black:#1A1008;--grey-dark:#3D3028;--grey-mid:#8A7A6E;--grey-light:#F5F0EB;\n--white:#FFFFFF;--border:#E8DDD5;--success:#2D6A4F;--success-light:#EDFAF3;\n--error:#C1121F;--error-light:#FFF0F0;--shadow-lg:0 12px 48px rgba(232,93,4,0.16)}\n*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:'DM Sans',sans-serif;background:var(--grey-light);min-height:100vh;\ndisplay:flex;flex-direction:column;align-items:center;padding:40px 16px 80px}\n.logo-wrap{margin-bottom:28px}\n.logo-badge{background:var(--orange);border:2px solid var(--orange-dark);display:inline-flex;\nalign-items:center;gap:10px;padding:10px 28px;position:relative}\n.logo-badge::before{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,0.3)}\n.logo-icon{display:flex;gap:4px}\n.logo-dot{width:14px;height:14px;background:white;border-radius:50%}\n.logo-text{font-family:'Playfair Display',serif;color:white;font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}\n.mgr-badge{background:var(--white);border:1px solid var(--border);padding:8px 20px;font-size:12px;\ncolor:var(--grey-mid);margin-bottom:20px;display:flex;align-items:center;gap:8px;letter-spacing:.06em;text-transform:uppercase}\n.mgr-badge strong{color:var(--black);font-size:14px;text-transform:none;letter-spacing:0}\n.card{background:var(--white);width:100%;max-width:620px;border-radius:2px;box-shadow:var(--shadow-lg);overflow:hidden}\n.card-header{background:var(--black);padding:28px 36px;display:flex;align-items:flex-start;justify-content:space-between}\n.card-header h1{font-family:'Playfair Display',serif;color:white;font-size:22px;font-weight:600}\n.card-header p{color:rgba(255,255,255,0.5);font-size:12px;margin-top:4px}\n.hdr-badge{background:rgba(232,93,4,0.2);color:var(--orange-mid);border:1px solid rgba(232,93,4,0.3);\npadding:6px 14px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}\n.card-body{padding:32px 36px}\n.req-strip{background:var(--grey-light);border:1px solid var(--border);padding:12px 16px;\ndisplay:flex;justify-content:space-between;align-items:center;margin-bottom:24px}\n.req-strip .rid-lbl{font-size:10px;color:var(--grey-mid);text-transform:uppercase;letter-spacing:.08em}\n.req-strip .rid-val{font-size:13px;font-weight:600;color:var(--black);font-family:monospace}\n.req-strip .req-date{font-size:12px;color:var(--grey-mid)}\n.section-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;\ncolor:var(--orange);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--orange-mid);margin-top:24px}\n.section-label:first-of-type{margin-top:0}\n.emp-profile{display:flex;align-items:center;gap:16px;padding:16px 20px;\nbackground:var(--orange-light);border:1px solid var(--orange-mid);margin-bottom:16px}\n.emp-avatar{width:52px;height:52px;background:var(--orange);border-radius:50%;display:flex;\nalign-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0}\n.emp-info h3{font-size:16px;font-weight:600;color:var(--black)}\n.emp-info p{font-size:12px;color:var(--orange-dark);margin-top:2px}\n.emp-tags{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}\n.emp-tag{background:white;border:1px solid var(--orange-mid);padding:3px 8px;font-size:11px;color:var(--orange-dark);font-weight:500}\n.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}\n.detail-item{background:var(--grey-light);border:1px solid var(--border);padding:12px 14px}\n.detail-item.full{grid-column:1/-1}\n.di-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px}\n.di-value{font-size:14px;font-weight:500;color:var(--black)}\n.leave-chip{display:inline-block;background:var(--orange);color:white;padding:4px 12px;font-size:13px;font-weight:600}\n.days-block{background:var(--black);color:white;padding:20px 24px;display:flex;\nalign-items:center;justify-content:space-between;margin-bottom:16px}\n.db-period{font-size:14px;font-weight:500;color:white}\n.db-label{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}\n.big-days{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:var(--orange);line-height:1}\n.db-sub{font-size:11px;color:rgba(255,255,255,0.4);text-align:right;margin-top:2px}\n.balance-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;\nborder:1px solid var(--border);margin-bottom:16px}\n.balance-row.ok{background:var(--success-light);border-color:rgba(45,106,79,0.3);color:var(--success)}\n.balance-row.warn{background:#FFFBE6;border-color:#D4AC00;color:#8A6D00}\n.balance-row.na{background:var(--grey-light);border-color:var(--border);color:var(--grey-mid)}\n.bal-label{font-size:12px;font-weight:500}\n.bal-val{font-size:15px;font-weight:700}\n.policy-box{background:var(--orange-light);border-left:3px solid var(--orange);padding:12px 14px;\nfont-size:12px;color:var(--orange-dark);line-height:1.6;margin-bottom:24px}\n.already-decided{padding:20px;text-align:center;font-size:14px;font-weight:500;margin-top:20px;display:none}\n.already-decided.approved{background:var(--success-light);color:var(--success);border:1px solid rgba(45,106,79,0.3)}\n.already-decided.rejected{background:var(--error-light);color:var(--error);border:1px solid rgba(193,18,31,0.3)}\n.decision-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}\n.d-btn{border:2px solid var(--border);background:var(--white);padding:20px 16px;cursor:pointer;\nfont-family:'DM Sans',sans-serif;transition:all .2s ease;text-align:center}\n.d-btn .d-icon{font-size:28px;margin-bottom:8px}\n.d-btn .d-label{font-size:14px;font-weight:600;color:var(--grey-dark);display:block;margin-bottom:4px}\n.d-btn .d-sub{font-size:11px;color:var(--grey-mid)}\n.d-btn:hover{transform:translateY(-2px)}\n.d-btn.approve:hover,.d-btn.approve.selected{border-color:var(--success);background:var(--success-light)}\n.d-btn.approve.selected .d-label{color:var(--success)}\n.d-btn.reject:hover,.d-btn.reject.selected{border-color:var(--error);background:var(--error-light)}\n.d-btn.reject.selected .d-label{color:var(--error)}\n.comment-area{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}\n.comment-area label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-dark)}\n.comment-area textarea{padding:14px;border:2px solid var(--border);font-family:'DM Sans',sans-serif;\nfont-size:14px;color:var(--black);resize:vertical;min-height:90px;outline:none;transition:border-color .2s}\n.comment-area textarea:focus{border-color:var(--orange)}\n.btn{width:100%;padding:16px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;\nletter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s ease}\n.btn-approve{background:var(--success);color:white}\n.btn-approve:hover{background:#1f5e40;transform:translateY(-1px)}\n.btn-reject{background:var(--error);color:white}\n.btn-reject:hover{background:#9B0E1A;transform:translateY(-1px)}\n.btn:disabled{background:var(--grey-mid);cursor:not-allowed;transform:none}\n.alert{padding:12px 16px;font-size:13px;font-weight:500;margin-bottom:16px;display:none;align-items:center;gap:10px}\n.alert.show{display:flex}\n.alert.error{background:var(--error-light);color:var(--error);border-left:3px solid var(--error)}\n.success-state{padding:48px 36px;text-align:center;display:none}\n.success-state.active{display:block}\n.s-icon{font-size:52px;margin-bottom:16px}\n.success-state h3{font-family:'Playfair Display',serif;font-size:20px;color:var(--black);margin-bottom:8px}\n.success-state p{color:var(--grey-mid);font-size:14px;line-height:1.6;max-width:400px;margin:0 auto}\n.footer-note{font-size:11px;color:var(--grey-mid);text-align:center;margin-top:28px;letter-spacing:.03em}\n.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;\nborder-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}\n@keyframes spin{to{transform:rotate(360deg)}}\n@media(max-width:520px){.card-body{padding:24px 20px}.detail-grid,.decision-opts{grid-template-columns:1fr}\n.card-header{padding:20px 24px;flex-direction:column;gap:12px}}\n</style>\n</head>\n<body>\n<div class=\"logo-wrap\">\n  <div class=\"logo-badge\">\n    <div class=\"logo-icon\"><div class=\"logo-dot\"></div><div class=\"logo-dot\"></div></div>\n    <div class=\"logo-text\">Orange Group</div>\n  </div>\n</div>\n<div class=\"mgr-badge\">\ud83d\udc64 Manager Review Portal &nbsp;\u00b7&nbsp; <strong id=\"mgrName\">Loading\u2026</strong></div>\n<div class=\"card\">\n  <div class=\"card-header\">\n    <div><h1>Leave Approval</h1><p>Review and action the request below</p></div>\n    <div class=\"hdr-badge\">Awaiting Decision</div>\n  </div>\n  <div class=\"card-body\" id=\"cardBody\">\n    <div class=\"req-strip\">\n      <div><div class=\"rid-lbl\">Request ID</div><div class=\"rid-val\" id=\"d_rid\">\u2014</div></div>\n      <div class=\"req-date\" id=\"d_rdate\">\u2014</div>\n    </div>\n    <div class=\"section-label\">Employee</div>\n    <div class=\"emp-profile\">\n      <div class=\"emp-avatar\" id=\"d_avatar\">\u2014</div>\n      <div class=\"emp-info\">\n        <h3 id=\"d_name\">\u2014</h3><p id=\"d_email\">\u2014</p>\n        <div class=\"emp-tags\"><span class=\"emp-tag\" id=\"d_role\">\u2014</span><span class=\"emp-tag\" id=\"d_dept\">\u2014</span></div>\n      </div>\n    </div>\n    <div class=\"section-label\">Leave Details</div>\n    <div class=\"detail-grid\">\n      <div class=\"detail-item full\"><div class=\"di-label\">Type of Leave</div><div class=\"di-value\"><span class=\"leave-chip\" id=\"d_type\">\u2014</span></div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Start Date</div><div class=\"di-value\" id=\"d_start\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">End Date</div><div class=\"di-value\" id=\"d_end\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Resumption Date</div><div class=\"di-value\" id=\"d_res\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Reliever</div><div class=\"di-value\" id=\"d_rel\">\u2014</div></div>\n      <div class=\"detail-item full\"><div class=\"di-label\">Contact During Leave</div><div class=\"di-value\" id=\"d_addr\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Phone</div><div class=\"di-value\" id=\"d_phone\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Days Previously Taken</div><div class=\"di-value\" id=\"d_prev\">\u2014</div></div>\n    </div>\n    <div class=\"days-block\">\n      <div><div class=\"db-label\">Leave Period</div><div class=\"db-period\" id=\"d_period\">\u2014</div></div>\n      <div style=\"text-align:right\"><div class=\"big-days\" id=\"d_days\">\u2014</div><div class=\"db-sub\">working days</div></div>\n    </div>\n    <div class=\"balance-row na\" id=\"d_balRow\">\n      <span class=\"bal-label\">Leave Balance</span><span class=\"bal-val\" id=\"d_bal\">\u2014</span>\n    </div>\n    <div class=\"policy-box\" id=\"d_policy\"></div>\n    <div class=\"already-decided\" id=\"alreadyDecided\"></div>\n    <div id=\"decisionSection\">\n      <div class=\"section-label\">Your Decision</div>\n      <div class=\"decision-opts\">\n        <button class=\"d-btn approve\" onclick=\"selectDecision('approve',this)\">\n          <div class=\"d-icon\">\u2705</div><span class=\"d-label\">Approve</span><span class=\"d-sub\">Forward to HR for final sign-off</span>\n        </button>\n        <button class=\"d-btn reject\" onclick=\"selectDecision('reject',this)\">\n          <div class=\"d-icon\">\u274c</div><span class=\"d-label\">Reject</span><span class=\"d-sub\">Notify employee of rejection</span>\n        </button>\n      </div>\n      <div class=\"comment-area\">\n        <label>Comments <span style=\"color:var(--grey-mid);font-weight:400;text-transform:none;letter-spacing:0\">(optional but recommended)</span></label>\n        <textarea id=\"f_comment\" placeholder=\"Add context, conditions, or notes for the employee and HR\u2026\"></textarea>\n      </div>\n      <div class=\"alert error\" id=\"submitError\"><span>\u26a0</span><span id=\"submitErrorMsg\">Something went wrong.</span></div>\n      <button class=\"btn btn-approve\" id=\"submitBtn\" onclick=\"submitDecision()\" disabled>Submit Decision</button>\n    </div>\n  </div>\n  <div class=\"success-state\" id=\"successState\">\n    <div class=\"s-icon\" id=\"s_icon\">\u2705</div>\n    <h3 id=\"s_heading\">Decision Submitted</h3>\n    <p id=\"s_msg\">Your decision has been recorded and all relevant parties notified.</p>\n  </div>\n</div>\n<div class=\"footer-note\">Orange Group Leave Management System \u00b7 Manager Portal \u00b7 Confidential</div>\n<script>\nconst D = JSON.parse(atob('${encoded}'));\nconst N8N_BASE = '[URL]';\nconst policyMap = ${JSON.stringify(policyMap)};\nlet selectedDecision = null;\n\nfunction fmtDate(s){try{return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}catch{return s||'\u2014';}}\n\nfunction init(){\n  document.getElementById('mgrName').textContent = D.ManagerName || 'Manager';\n  document.getElementById('d_rid').textContent = D.RequestID;\n  document.getElementById('d_rdate').textContent = fmtDate(D.RequestDate);\n  const initials = (D.EmployeeName||'??').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();\n  document.getElementById('d_avatar').textContent = initials;\n  document.getElementById('d_name').textContent = D.EmployeeName||'\u2014';\n  document.getElementById('d_email').textContent = D.EmployeeEmail||'\u2014';\n  document.getElementById('d_role').textContent = D.Role||'\u2014';\n  document.getElementById('d_dept').textContent = D.Department||'\u2014';\n  document.getElementById('d_type').textContent = D.LeaveType||'\u2014';\n  document.getElementById('d_start').textContent = fmtDate(D.StartDate);\n  document.getElementById('d_end').textContent = fmtDate(D.EndDate);\n  document.getElementById('d_res').textContent = fmtDate(D.ResumptionDate);\n  document.getElementById('d_rel').textContent = D.Reliever||'\u2014';\n  document.getElementById('d_addr').textContent = D.ContactAddress||'\u2014';\n  document.getElementById('d_phone').textContent = D.PhoneNumber||'\u2014';\n  document.getElementById('d_prev').textContent = D.DaysPreviousTaken||'0';\n  document.getElementById('d_period').textContent = fmtDate(D.StartDate)+' \u2192 '+fmtDate(D.EndDate);\n  document.getElementById('d_days').textContent = D.NumberOfDays||'\u2014';\n  const bal = parseFloat(D.LeaveBalance)||0;\n  const req = parseInt(D.NumberOfDays)||0;\n  const balRow = document.getElementById('d_balRow');\n  const balVal = document.getElementById('d_bal');\n  if(D.LeaveType==='Annual Leave'){\n    balVal.textContent = bal+' days remaining';\n    if(req>bal){balRow.className='balance-row warn';balVal.textContent='\u26a0 Only '+bal+' days remaining \u2014 '+req+' requested';}\n    else balRow.className='balance-row ok';\n  } else {\n    balRow.className='balance-row na';\n    balVal.textContent='N/A \u2014 not deducted for '+D.LeaveType;\n  }\n  const pol = document.getElementById('d_policy');\n  pol.textContent = policyMap[D.LeaveType] ? '\ud83d\udccb Policy: '+policyMap[D.LeaveType] : '';\n  if(D.ManagerStatus && D.ManagerStatus!=='Pending'){\n    const ad = document.getElementById('alreadyDecided');\n    ad.style.display='block';\n    ad.textContent='This request was already '+D.ManagerStatus.toLowerCase()+' on '+fmtDate(D.ManagerDecisionDate)+'.';\n    ad.className='already-decided '+(D.ManagerStatus==='Approved'?'approved':'rejected');\n    document.getElementById('decisionSection').style.display='none';\n  }\n}\n\nfunction selectDecision(dec, btn){\n  selectedDecision=dec;\n  document.querySelectorAll('.d-btn').forEach(b=>b.classList.remove('selected'));\n  btn.classList.add('selected');\n  const sb=document.getElementById('submitBtn');\n  sb.disabled=false;\n  if(dec==='approve'){sb.className='btn btn-approve';sb.textContent='\u2705 Approve & Forward to HR';}\n  else{sb.className='btn btn-reject';sb.textContent='\u274c Reject & Notify Employee';}\n}\n\nasync function submitDecision(){\n  if(!selectedDecision) return;\n  const btn=document.getElementById('submitBtn');\n  btn.disabled=true;\n  btn.innerHTML='<span class=\"spinner\"></span>Submitting\u2026';\n  document.getElementById('submitError').classList.remove('show');\n  try{\n    const res = await fetch(N8N_BASE+'/submit-manager-decision',{\n      method:'POST',headers:{'Content-Type':'application/json'},\n      body:JSON.stringify({requestId:D.RequestID,decision:selectedDecision,\n        comment:document.getElementById('f_comment').value.trim(),\n        managerName:D.ManagerName,managerEmail:D.ManagerEmail})\n    });\n    if(!res.ok) throw new Error('Server error');\n    const isApprove=selectedDecision==='approve';\n    document.getElementById('s_icon').textContent=isApprove?'\u2705':'\u274c';\n    document.getElementById('s_heading').textContent=isApprove?'Request Approved':'Request Rejected';\n    document.getElementById('s_msg').textContent=isApprove\n      ?'Forwarded to HR for final approval. Employee will be notified once HR completes their review.'\n      :'Employee has been notified of your decision.';\n    document.getElementById('cardBody').style.display='none';\n    document.getElementById('successState').classList.add('active');\n  }catch(err){\n    document.getElementById('submitError').classList.add('show');\n    document.getElementById('submitErrorMsg').textContent='Submission failed. Please try again or contact IT.';\n    btn.disabled=false;\n    btn.textContent=selectedDecision==='approve'?'\u2705 Approve & Forward to HR':'\u274c Reject & Notify Employee';\n  }\n}\n\ninit();\n</script>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];"
+      },
+      "id": "__NODE_12__",
+      "name": "Build HTML: Manager Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        6208
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "__NODE_13__",
+      "name": "Respond: Manager Form",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        6208
+      ]
+    },
+    {
+      "parameters": {
+        "path": "hr-approval-form",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_14__",
+      "name": "GET: HR Approval Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        928,
+        7024
+      ],
+      "webhookId": "__WEBHOOK_3__"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_15__",
+      "name": "Get Request (HR Form)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        7024
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_16__",
+      "name": "Get Employee (HR Form)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1344,
+        7024
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// BUILD: HR Final Approval Form\n\nconst allRequests = $('Get Request (HR Form)').all().map(i => i.json);\nconst allEmployees = $('Get Employee (HR Form)').all().map(i => i.json);\n\nconst params = $input.first().json.query || {};\nconst requestId = params.requestId || '';\n\nconst req = allRequests.find(r => String(r.RequestID || '').trim() === String(requestId).trim());\nif (!req) throw new Error('Request not found: ' + requestId);\nif (req.ManagerStatus !== 'Approved') throw new Error('This request has not yet been approved by the manager.');\n\nconst emp = allEmployees.find(e => String(e.EmployeeID || '').trim() === String(req.EmployeeID || '').trim());\nif (!emp) throw new Error('Employee not found for request');\n\nconst data = {\n  RequestID: req.RequestID,\n  RequestDate: req.RequestDate || '',\n  EmployeeID: req.EmployeeID,\n  EmployeeName: emp.FullName || '',\n  EmployeeEmail: emp.Email || '',\n  Role: emp.Role || '',\n  Department: emp.Department || '',\n  ManagerName: emp['Manager Name'] || emp.ManagerName || '',\n  ManagerEmail: emp.ManagerEmail || '',\n  LeaveType: req.LeaveType || '',\n  StartDate: req.StartDate || '',\n  EndDate: req.EndDate || '',\n  ResumptionDate: req.ResumptionDate || '',\n  NumberOfDays: req.NumberOfDays || '',\n  DaysPreviousTaken: req.DaysPreviousTaken || '0',\n  Reliever: req.Reliever || '',\n  ContactAddress: req.ContactAddress || '',\n  PhoneNumber: req.PhoneNumber || '',\n  LeaveBalance: emp.LeaveBalance || '0',\n  TotalLeaveDays: emp.TotalLeaveDays || '0',\n  ManagerStatus: req.ManagerStatus || '',\n  ManagerComment: req.ManagerComment || '',\n  ManagerDecisionDate: req.ManagerDecisionDate || '',\n  HRStatus: req.HRStatus || 'Pending',\n  HRComment: req.HRComment || '',\n  HRDecisionDate: req.HRDecisionDate || ''\n};\n\nconst encoded = Buffer.from(JSON.stringify(data)).toString('base64');\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n<title>HR Final Approval \u2014 Orange Group</title>\n<link href=\"[URL]\" rel=\"stylesheet\">\n<style>\n:root{--orange:#E85D04;--orange-dark:#C44B00;--orange-light:#FFF3ED;--orange-mid:#FFD6B8;\n--black:#1A1008;--grey-dark:#3D3028;--grey-mid:#8A7A6E;--grey-light:#F5F0EB;\n--white:#FFFFFF;--border:#E8DDD5;--success:#2D6A4F;--success-light:#EDFAF3;\n--error:#C1121F;--error-light:#FFF0F0;--hr:#4A1259;--hr-light:#F5EDF9;--hr-mid:#DEC5E8;\n--shadow-lg:0 12px 48px rgba(74,18,89,0.16)}\n*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}\nbody{font-family:'DM Sans',sans-serif;background:var(--grey-light);min-height:100vh;\ndisplay:flex;flex-direction:column;align-items:center;padding:40px 16px 80px}\n.logo-wrap{margin-bottom:24px}\n.logo-badge{background:var(--orange);border:2px solid var(--orange-dark);display:inline-flex;\nalign-items:center;gap:10px;padding:10px 28px;position:relative}\n.logo-badge::before{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,0.3)}\n.logo-icon{display:flex;gap:4px}\n.logo-dot{width:14px;height:14px;background:white;border-radius:50%}\n.logo-text{font-family:'Playfair Display',serif;color:white;font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}\n.hr-badge{background:var(--hr);color:white;padding:8px 20px;font-size:11px;font-weight:600;\nletter-spacing:.1em;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:8px}\n.card{background:var(--white);width:100%;max-width:660px;border-radius:2px;box-shadow:var(--shadow-lg);overflow:hidden}\n.card-header{background:var(--hr);padding:28px 36px;display:flex;align-items:flex-start;justify-content:space-between;position:relative}\n.card-header::before{content:'';position:absolute;right:40px;top:0;bottom:0;width:4px;background:var(--orange)}\n.card-header h1{font-family:'Playfair Display',serif;color:white;font-size:22px;font-weight:600}\n.card-header p{color:rgba(255,255,255,0.5);font-size:12px;margin-top:4px}\n.hdr-badge{background:rgba(232,93,4,0.2);color:var(--orange-mid);border:1px solid rgba(232,93,4,0.3);\npadding:6px 14px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}\n.card-body{padding:32px 36px}\n.trail{display:flex;background:var(--grey-light);border:1px solid var(--border);overflow:hidden;margin-bottom:24px}\n.trail-step{flex:1;padding:12px 16px;text-align:center;position:relative;font-size:12px}\n.trail-step::after{content:'\u203a';position:absolute;right:-6px;top:50%;transform:translateY(-50%);color:var(--border);font-size:20px;z-index:1}\n.trail-step:last-child::after{display:none}\n.trail-step .ts-icon{font-size:18px;margin-bottom:4px}\n.trail-step .ts-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:2px}\n.trail-step .ts-status{font-size:11px;font-weight:600;color:var(--grey-mid)}\n.trail-step.done{background:var(--success-light)}\n.trail-step.done .ts-status{color:var(--success)}\n.trail-step.current{background:var(--hr-light);border-bottom:3px solid var(--hr)}\n.trail-step.current .ts-label{color:var(--hr)}\n.trail-step.current .ts-status{color:var(--hr)}\n.section-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;\ncolor:var(--hr);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--hr-mid);margin-top:24px}\n.section-label:first-of-type{margin-top:0}\n.emp-profile{display:flex;align-items:center;gap:16px;padding:16px 20px;\nbackground:var(--hr-light);border:1px solid var(--hr-mid);margin-bottom:16px}\n.emp-avatar{width:52px;height:52px;background:var(--hr);border-radius:50%;display:flex;\nalign-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0}\n.emp-info h3{font-size:16px;font-weight:600;color:var(--black)}\n.emp-info p{font-size:12px;color:var(--hr);margin-top:2px}\n.emp-tags{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}\n.emp-tag{background:white;border:1px solid var(--hr-mid);padding:3px 8px;font-size:11px;color:var(--hr);font-weight:500}\n.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}\n.detail-item{background:var(--grey-light);border:1px solid var(--border);padding:12px 14px}\n.detail-item.full{grid-column:1/-1}\n.di-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px}\n.di-value{font-size:14px;font-weight:500;color:var(--black)}\n.leave-chip{display:inline-block;background:var(--hr);color:white;padding:4px 12px;font-size:13px;font-weight:600}\n.days-block{background:var(--black);color:white;padding:20px 24px;display:flex;\nalign-items:center;justify-content:space-between;margin-bottom:16px}\n.db-label{font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}\n.db-period{font-size:14px;font-weight:500;color:white}\n.big-days{font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:var(--orange);line-height:1}\n.db-sub{font-size:11px;color:rgba(255,255,255,0.4);text-align:right;margin-top:2px}\n.balance-card{border:1px solid var(--border);padding:16px 20px;margin-bottom:16px}\n.bc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}\n.bc-label{font-size:12px;font-weight:600;color:var(--grey-dark);text-transform:uppercase;letter-spacing:.04em}\n.bc-val{font-size:15px;font-weight:700;color:var(--black)}\n.balance-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px}\n.balance-fill{height:100%;border-radius:4px;background:var(--success);transition:width .8s ease}\n.balance-fill.mid{background:#D4AC00}\n.balance-fill.low{background:var(--error)}\n.bc-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--grey-mid)}\n.mgr-decision{border:1px solid var(--success);background:var(--success-light);padding:16px 20px;margin-bottom:20px}\n.mgr-decision .md-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}\n.mgr-decision .md-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--success)}\n.mgr-decision .md-badge{background:var(--success);color:white;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.06em}\n.mgr-decision .md-name{font-size:14px;font-weight:500;color:var(--black);margin-bottom:4px}\n.mgr-decision .md-comment{font-size:13px;color:var(--grey-dark);font-style:italic}\n.hr-checklist{border:1px solid var(--hr-mid);background:var(--hr-light);padding:16px 20px;margin-bottom:20px}\n.hc-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--hr);margin-bottom:14px}\n.check-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--hr-mid);cursor:pointer}\n.check-item:last-child{border-bottom:none}\n.check-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--hr);margin-top:2px;flex-shrink:0;cursor:pointer}\n.check-item .ci-text{font-size:13px;color:var(--grey-dark);line-height:1.4}\n.check-item .ci-text.checked{text-decoration:line-through;color:var(--grey-mid)}\n.already-decided{padding:20px;text-align:center;font-size:14px;font-weight:500;margin-bottom:20px;display:none}\n.already-decided.approved{background:var(--success-light);color:var(--success);border:1px solid rgba(45,106,79,0.3)}\n.already-decided.rejected{background:var(--error-light);color:var(--error);border:1px solid rgba(193,18,31,0.3)}\n.decision-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}\n.d-btn{border:2px solid var(--border);background:var(--white);padding:20px 16px;cursor:pointer;\nfont-family:'DM Sans',sans-serif;transition:all .2s ease;text-align:center}\n.d-btn .d-icon{font-size:28px;margin-bottom:8px}\n.d-btn .d-label{font-size:14px;font-weight:600;color:var(--grey-dark);display:block;margin-bottom:4px}\n.d-btn .d-sub{font-size:11px;color:var(--grey-mid)}\n.d-btn:hover{transform:translateY(-2px)}\n.d-btn.approve:hover,.d-btn.approve.selected{border-color:var(--success);background:var(--success-light)}\n.d-btn.approve.selected .d-label{color:var(--success)}\n.d-btn.reject:hover,.d-btn.reject.selected{border-color:var(--error);background:var(--error-light)}\n.d-btn.reject.selected .d-label{color:var(--error)}\n.override-warn{background:#FFF8E0;border:1px solid #D4AC00;border-left:3px solid #D4AC00;\npadding:12px 14px;font-size:12px;color:#6B5A00;line-height:1.5;margin-bottom:16px;display:none}\n.override-warn.show{display:block}\n.comment-area{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}\n.comment-area label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-dark)}\n.comment-area textarea{padding:14px;border:2px solid var(--border);font-family:'DM Sans',sans-serif;\nfont-size:14px;color:var(--black);resize:vertical;min-height:90px;outline:none;transition:border-color .2s}\n.comment-area textarea:focus{border-color:var(--hr)}\n.btn{width:100%;padding:16px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;\nletter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s ease}\n.btn-approve{background:var(--success);color:white}\n.btn-approve:hover{background:#1f5e40;transform:translateY(-1px)}\n.btn-reject{background:var(--error);color:white}\n.btn-reject:hover{background:#9B0E1A;transform:translateY(-1px)}\n.btn:disabled{background:var(--grey-mid);cursor:not-allowed;transform:none}\n.alert{padding:12px 16px;font-size:13px;font-weight:500;margin-bottom:16px;display:none;align-items:center;gap:10px}\n.alert.show{display:flex}\n.alert.error{background:var(--error-light);color:var(--error);border-left:3px solid var(--error)}\n.success-state{padding:48px 36px;text-align:center;display:none}\n.success-state.active{display:block}\n.s-icon{font-size:52px;margin-bottom:16px}\n.success-state h3{font-family:'Playfair Display',serif;font-size:20px;color:var(--black);margin-bottom:8px}\n.success-state p{color:var(--grey-mid);font-size:14px;line-height:1.6;max-width:400px;margin:0 auto}\n.footer-note{font-size:11px;color:var(--grey-mid);text-align:center;margin-top:28px;letter-spacing:.03em}\n.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;\nborder-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}\n@keyframes spin{to{transform:rotate(360deg)}}\n@media(max-width:520px){.card-body{padding:24px 20px}.detail-grid,.decision-opts{grid-template-columns:1fr}\n.card-header{padding:20px 24px;flex-direction:column;gap:12px}.trail{flex-direction:column}\n.trail-step::after{display:none}}\n</style>\n</head>\n<body>\n<div class=\"logo-wrap\">\n  <div class=\"logo-badge\">\n    <div class=\"logo-icon\"><div class=\"logo-dot\"></div><div class=\"logo-dot\"></div></div>\n    <div class=\"logo-text\">Orange Group</div>\n  </div>\n</div>\n<div class=\"hr-badge\">\ud83c\udfdb\ufe0f &nbsp; Human Resources \u00b7 Final Approval Portal</div>\n<div class=\"card\">\n  <div class=\"card-header\">\n    <div><h1>HR Final Review</h1><p>Manager has approved \u00b7 Your decision is final</p></div>\n    <div class=\"hdr-badge\">Step 3 of 3</div>\n  </div>\n  <div class=\"card-body\" id=\"cardBody\">\n    <div class=\"trail\">\n      <div class=\"trail-step done\"><div class=\"ts-icon\">\ud83d\udcdd</div><div class=\"ts-label\">Employee</div><div class=\"ts-status\">Submitted</div></div>\n      <div class=\"trail-step done\"><div class=\"ts-icon\">\ud83d\udc64</div><div class=\"ts-label\">Manager</div><div class=\"ts-status\">Approved</div></div>\n      <div class=\"trail-step current\"><div class=\"ts-icon\">\ud83c\udfdb\ufe0f</div><div class=\"ts-label\">HR</div><div class=\"ts-status\">Pending</div></div>\n      <div class=\"trail-step\"><div class=\"ts-icon\">\u2705</div><div class=\"ts-label\">Final</div><div class=\"ts-status\">Awaiting</div></div>\n    </div>\n    <div class=\"section-label\">Employee</div>\n    <div class=\"emp-profile\">\n      <div class=\"emp-avatar\" id=\"d_avatar\">\u2014</div>\n      <div class=\"emp-info\">\n        <h3 id=\"d_name\">\u2014</h3><p id=\"d_email\">\u2014</p>\n        <div class=\"emp-tags\">\n          <span class=\"emp-tag\" id=\"d_role\">\u2014</span>\n          <span class=\"emp-tag\" id=\"d_dept\">\u2014</span>\n          <span class=\"emp-tag\" id=\"d_empid\">\u2014</span>\n        </div>\n      </div>\n    </div>\n    <div class=\"section-label\">Leave Request Details</div>\n    <div class=\"detail-grid\">\n      <div class=\"detail-item full\"><div class=\"di-label\">Type of Leave</div><div class=\"di-value\"><span class=\"leave-chip\" id=\"d_type\">\u2014</span></div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Start Date</div><div class=\"di-value\" id=\"d_start\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">End Date</div><div class=\"di-value\" id=\"d_end\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Resumption Date</div><div class=\"di-value\" id=\"d_res\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Reliever</div><div class=\"di-value\" id=\"d_rel\">\u2014</div></div>\n      <div class=\"detail-item full\"><div class=\"di-label\">Contact During Leave</div><div class=\"di-value\" id=\"d_addr\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Phone</div><div class=\"di-value\" id=\"d_phone\">\u2014</div></div>\n      <div class=\"detail-item\"><div class=\"di-label\">Days Previously Taken</div><div class=\"di-value\" id=\"d_prev\">\u2014</div></div>\n    </div>\n    <div class=\"days-block\">\n      <div><div class=\"db-label\">Leave Period</div><div class=\"db-period\" id=\"d_period\">\u2014</div></div>\n      <div style=\"text-align:right\"><div class=\"big-days\" id=\"d_days\">\u2014</div><div class=\"db-sub\">working days</div></div>\n    </div>\n    <div class=\"balance-card\" id=\"balCard\">\n      <div class=\"bc-header\"><span class=\"bc-label\">Annual Leave Balance</span><span class=\"bc-val\" id=\"bc_val\">\u2014</span></div>\n      <div class=\"balance-bar\"><div class=\"balance-fill\" id=\"bc_fill\" style=\"width:0%\"></div></div>\n      <div class=\"bc-meta\"><span id=\"bc_used\">\u2014</span><span id=\"bc_total\">\u2014</span></div>\n    </div>\n    <div class=\"section-label\">Manager Decision</div>\n    <div class=\"mgr-decision\">\n      <div class=\"md-head\"><div class=\"md-label\">Manager Review</div><div class=\"md-badge\">\u2705 Approved</div></div>\n      <div class=\"md-name\" id=\"d_mgrName\">\u2014</div>\n      <div class=\"md-comment\" id=\"d_mgrComment\">No comments provided.</div>\n    </div>\n    <div class=\"section-label\">HR Verification Checklist</div>\n    <div class=\"hr-checklist\">\n      <div class=\"hc-title\">Confirm before approving</div>\n      <label class=\"check-item\"><input type=\"checkbox\" onchange=\"toggleCheck(this)\"><span class=\"ci-text\">Leave period does not conflict with critical business operations</span></label>\n      <label class=\"check-item\"><input type=\"checkbox\" onchange=\"toggleCheck(this)\"><span class=\"ci-text\">Employee leave balance is sufficient (Annual Leave only)</span></label>\n      <label class=\"check-item\"><input type=\"checkbox\" onchange=\"toggleCheck(this)\"><span class=\"ci-text\">Reliever is confirmed and available during this period</span></label>\n      <label class=\"check-item\"><input type=\"checkbox\" onchange=\"toggleCheck(this)\"><span class=\"ci-text\">Minimum notice period has been observed per policy</span></label>\n      <label class=\"check-item\"><input type=\"checkbox\" onchange=\"toggleCheck(this)\"><span class=\"ci-text\">Leave record will be updated in HR records upon approval</span></label>\n    </div>\n    <div class=\"already-decided\" id=\"alreadyDecided\"></div>\n    <div id=\"decisionSection\">\n      <div class=\"section-label\">HR Decision</div>\n      <div class=\"override-warn\" id=\"overrideWarn\">\u26a0\ufe0f <strong>Overriding Manager:</strong> You are rejecting a request the manager approved. Both the employee and manager will be notified with your comments.</div>\n      <div class=\"decision-opts\">\n        <button class=\"d-btn approve\" onclick=\"selectDecision('approve',this)\">\n          <div class=\"d-icon\">\u2705</div><span class=\"d-label\">Final Approve</span><span class=\"d-sub\">Balance deducted, employee notified</span>\n        </button>\n        <button class=\"d-btn reject\" onclick=\"selectDecision('reject',this)\">\n          <div class=\"d-icon\">\u274c</div><span class=\"d-label\">Reject</span><span class=\"d-sub\">Override manager, notify all parties</span>\n        </button>\n      </div>\n      <div class=\"comment-area\">\n        <label>HR Comments <span style=\"color:var(--grey-mid);font-weight:400;text-transform:none;letter-spacing:0\">(required if rejecting)</span></label>\n        <textarea id=\"f_comment\" placeholder=\"Add HR notes, conditions, or reason for rejection\u2026\"></textarea>\n      </div>\n      <div class=\"alert error\" id=\"submitError\"><span>\u26a0</span><span id=\"submitErrorMsg\">Something went wrong.</span></div>\n      <button class=\"btn btn-approve\" id=\"submitBtn\" onclick=\"submitDecision()\" disabled>Submit HR Decision</button>\n    </div>\n  </div>\n  <div class=\"success-state\" id=\"successState\">\n    <div class=\"s-icon\" id=\"s_icon\">\u2705</div>\n    <h3 id=\"s_heading\">Decision Recorded</h3>\n    <p id=\"s_msg\">The employee has been notified and HR records will be updated accordingly.</p>\n  </div>\n</div>\n<div class=\"footer-note\">Orange Group Leave Management System \u00b7 HR Portal \u00b7 Strictly Confidential</div>\n<script>\nconst D = JSON.parse(atob('${encoded}'));\nconst N8N_BASE = '[URL]';\nlet selectedDecision = null;\n\nfunction fmtDate(s){try{return new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}catch{return s||'\u2014';}}\nfunction toggleCheck(cb){cb.closest('.check-item').querySelector('.ci-text').classList.toggle('checked',cb.checked);}\n\nfunction init(){\n  const initials=(D.EmployeeName||'??').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();\n  document.getElementById('d_avatar').textContent=initials;\n  document.getElementById('d_name').textContent=D.EmployeeName||'\u2014';\n  document.getElementById('d_email').textContent=D.EmployeeEmail||'\u2014';\n  document.getElementById('d_role').textContent=D.Role||'\u2014';\n  document.getElementById('d_dept').textContent=D.Department||'\u2014';\n  document.getElementById('d_empid').textContent=D.EmployeeID||'\u2014';\n  document.getElementById('d_type').textContent=D.LeaveType||'\u2014';\n  document.getElementById('d_start').textContent=fmtDate(D.StartDate);\n  document.getElementById('d_end').textContent=fmtDate(D.EndDate);\n  document.getElementById('d_res').textContent=fmtDate(D.ResumptionDate);\n  document.getElementById('d_rel').textContent=D.Reliever||'\u2014';\n  document.getElementById('d_addr').textContent=D.ContactAddress||'\u2014';\n  document.getElementById('d_phone').textContent=D.PhoneNumber||'\u2014';\n  document.getElementById('d_prev').textContent=D.DaysPreviousTaken||'0';\n  document.getElementById('d_period').textContent=fmtDate(D.StartDate)+' \u2192 '+fmtDate(D.EndDate);\n  document.getElementById('d_days').textContent=D.NumberOfDays||'\u2014';\n\n  if(D.LeaveType==='Annual Leave'){\n    const total=parseFloat(D.TotalLeaveDays)||20;\n    const balance=parseFloat(D.LeaveBalance)||0;\n    const used=total-balance;\n    const requested=parseInt(D.NumberOfDays)||0;\n    const pct=Math.min(100,((used+requested)/total)*100);\n    document.getElementById('bc_val').textContent=balance+' days remaining';\n    document.getElementById('bc_used').textContent=used+' used + '+requested+' requested';\n    document.getElementById('bc_total').textContent='of '+total+' total';\n    const fill=document.getElementById('bc_fill');\n    setTimeout(()=>fill.style.width=pct+'%',100);\n    if(pct>90)fill.classList.add('low');\n    else if(pct>70)fill.classList.add('mid');\n  } else {\n    document.getElementById('balCard').style.display='none';\n  }\n\n  document.getElementById('d_mgrName').textContent='Approved by: '+(D.ManagerName||'\u2014')+' \u00b7 '+fmtDate(D.ManagerDecisionDate);\n  document.getElementById('d_mgrComment').textContent=D.ManagerComment||'No comments provided.';\n\n  if(D.HRStatus && D.HRStatus!=='Pending'){\n    const ad=document.getElementById('alreadyDecided');\n    ad.style.display='block';\n    ad.textContent='This request was already '+D.HRStatus.toLowerCase()+' by HR on '+fmtDate(D.HRDecisionDate)+'.';\n    ad.className='already-decided '+(D.HRStatus==='Approved'?'approved':'rejected');\n    document.getElementById('decisionSection').style.display='none';\n  }\n}\n\nfunction selectDecision(dec,btn){\n  selectedDecision=dec;\n  document.querySelectorAll('.d-btn').forEach(b=>b.classList.remove('selected'));\n  btn.classList.add('selected');\n  const sb=document.getElementById('submitBtn');\n  sb.disabled=false;\n  const ow=document.getElementById('overrideWarn');\n  if(dec==='approve'){sb.className='btn btn-approve';sb.textContent='\u2705 Final Approve \u2014 Notify Employee';ow.classList.remove('show');}\n  else{sb.className='btn btn-reject';sb.textContent='\u274c Reject \u2014 Override Manager Decision';ow.classList.add('show');}\n}\n\nasync function submitDecision(){\n  if(!selectedDecision) return;\n  if(selectedDecision==='reject'&&!document.getElementById('f_comment').value.trim()){\n    document.getElementById('f_comment').style.borderColor='var(--error)';\n    document.getElementById('f_comment').focus(); return;\n  }\n  const btn=document.getElementById('submitBtn');\n  btn.disabled=true;\n  btn.innerHTML='<span class=\"spinner\"></span>Submitting\u2026';\n  document.getElementById('submitError').classList.remove('show');\n  try{\n    const res=await fetch(N8N_BASE+'/submit-hr-decision',{\n      method:'POST',headers:{'Content-Type':'application/json'},\n      body:JSON.stringify({requestId:D.RequestID,decision:selectedDecision,\n        comment:document.getElementById('f_comment').value.trim(),\n        employeeId:D.EmployeeID,numberOfDays:D.NumberOfDays,leaveType:D.LeaveType})\n    });\n    if(!res.ok) throw new Error('Server error');\n    const isApprove=selectedDecision==='approve';\n    document.getElementById('s_icon').textContent=isApprove?'\u2705':'\u274c';\n    document.getElementById('s_heading').textContent=isApprove?'Leave Approved':'Leave Rejected';\n    document.getElementById('s_msg').textContent=isApprove\n      ?D.EmployeeName+' has been notified. Leave balance has been updated.'\n      :'Request rejected. '+D.EmployeeName+' and their manager have been notified with your reason.';\n    document.getElementById('cardBody').style.display='none';\n    document.getElementById('successState').classList.add('active');\n  }catch(err){\n    document.getElementById('submitError').classList.add('show');\n    document.getElementById('submitErrorMsg').textContent='Submission failed. Please try again or contact IT.';\n    btn.disabled=false;\n    btn.textContent=selectedDecision==='approve'?'\u2705 Final Approve \u2014 Notify Employee':'\u274c Reject \u2014 Override Manager Decision';\n  }\n}\n\ninit();\n</script>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];"
+      },
+      "id": "__NODE_17__",
+      "name": "Build HTML: HR Form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        7024
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "__NODE_18__",
+      "name": "Respond: HR Form",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        7024
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LeaveBalance": "={{ $json.skip ? $json.LeaveBalance : $json.newBalance }}"
+          },
+          "matchingColumns": [
+            "EmployeeID"
+          ],
+          "schema": [
+            {
+              "id": "EmployeeID",
+              "displayName": "EmployeeID",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "__NODE_19__",
+      "name": "Deduct Leave Balance",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2448,
+        7344
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_20__",
+      "name": "Get All Employees1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        512,
+        6240
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// BUILD: Employee Leave Request Form\n// Encodes employee data as base64 and injects into table_3-contained HTML\n\nconst employees = $input.all().map(i => i.json);\nconst encoded = Buffer.from(JSON.stringify(employees)).toString('base64');\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Leave Application \u2014 Orange Group</title>\n<link href=\"[URL]\" rel=\"stylesheet\">\n<style>\n  :root {\n    --orange:#E85D04;--orange-dark:#C44B00;--orange-light:#FFF3ED;--orange-mid:#FFD6B8;\n    --black:#1A1008;--grey-dark:#3D3028;--grey-mid:#8A7A6E;--grey-light:#F5F0EB;\n    --white:#FFFFFF;--border:#E8DDD5;--success:#2D6A4F;--error:#C1121F;\n    --shadow-lg:0 12px 48px rgba(232,93,4,0.16);\n  }\n  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}\n  body{font-family:'DM Sans',sans-serif;background:var(--grey-light);min-height:100vh;\n    display:flex;flex-direction:column;align-items:center;padding:40px 16px 80px;overflow-x:hidden}\n  body::before{content:'';position:fixed;top:-200px;right:-200px;width:600px;height:600px;\n    background:radial-gradient(circle,rgba(232,93,4,0.08) 0%,transparent 70%);pointer-events:none}\n\n  .logo-wrap{margin-bottom:32px;animation:fadeDown .6s ease both}\n  .logo-badge{background:var(--orange);border:2px solid var(--orange-dark);display:inline-flex;\n    align-items:center;gap:10px;padding:10px 28px;position:relative}\n  .logo-badge::before{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,0.3);pointer-events:none}\n  .logo-icon{display:flex;gap:4px}\n  .logo-dot{width:14px;height:14px;background:white;border-radius:50%;position:relative;overflow:hidden}\n  .logo-dot::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40%;background:rgba(0,0,0,0.15)}\n  .logo-text{font-family:'Playfair Display',serif;color:white;font-size:18px;font-weight:700;\n    letter-spacing:0.12em;text-transform:uppercase}\n\n  .card{background:var(--white);width:100%;max-width:600px;border-radius:2px;\n    box-shadow:var(--shadow-lg);overflow:hidden;animation:fadeUp .7s ease both;animation-delay:.1s}\n  .card-header{background:var(--orange);padding:28px 36px;position:relative;overflow:hidden}\n  .card-header::after{content:'';position:absolute;right:-30px;bottom:-30px;width:120px;height:120px;\n    border:2px solid rgba(255,255,255,0.15);border-radius:50%}\n  .card-header h1{font-family:'Playfair Display',serif;color:white;font-size:22px;font-weight:600}\n  .card-header p{color:rgba(255,255,255,0.8);font-size:13px;margin-top:4px;font-weight:300;letter-spacing:.02em}\n\n  .progress-bar{display:flex;border-bottom:1px solid var(--border)}\n  .progress-step{flex:1;padding:14px 16px;display:flex;align-items:center;gap:10px;font-size:12px;\n    font-weight:500;color:var(--grey-mid);letter-spacing:.06em;text-transform:uppercase;\n    transition:all .3s ease;border-bottom:3px solid transparent}\n  .progress-step.active{color:var(--orange);border-bottom-color:var(--orange)}\n  .progress-step.done{color:var(--success);border-bottom-color:var(--success)}\n  .step-num{width:22px;height:22px;border-radius:50%;border:2px solid currentColor;display:flex;\n    align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;transition:all .3s ease}\n  .progress-step.done .step-num{background:var(--success);color:white;border-color:var(--success)}\n\n  .form-body{padding:36px}\n  .page{display:none}\n  .page.active{display:block;animation:fadeIn .4s ease}\n\n  .id-lookup{text-align:center;padding:16px 0 8px}\n  .id-icon{width:64px;height:64px;background:var(--orange-light);border-radius:50%;\n    display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px}\n  .id-lookup h2{font-family:'Playfair Display',serif;font-size:20px;color:var(--black);margin-bottom:8px}\n  .id-lookup p{color:var(--grey-mid);font-size:14px;line-height:1.6;margin-bottom:32px}\n\n  .id-input-group{position:relative;max-width:320px;margin:0 auto 12px}\n  .id-prefix{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:13px;\n    font-weight:600;color:var(--orange);letter-spacing:.05em;pointer-events:none}\n  .id-input-group input{width:100%;padding:16px 16px 16px 64px;font-size:20px;\n    font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:.12em;border:2px solid var(--border);\n    border-radius:2px;background:var(--grey-light);color:var(--black);text-align:center;\n    transition:all .2s ease;outline:none}\n  .id-input-group input:focus{border-color:var(--orange);background:var(--white);\n    box-shadow:0 0 0 4px rgba(232,93,4,0.08)}\n  .id-hint{font-size:12px;color:var(--grey-mid);margin-bottom:28px}\n\n  .alert{padding:12px 16px;border-radius:2px;font-size:13px;font-weight:500;margin-bottom:20px;\n    display:none;align-items:center;gap:10px;animation:fadeIn .3s ease}\n  .alert.show{display:flex}\n  .alert.error{background:#FFF0F0;color:var(--error);border-left:3px solid var(--error)}\n  .alert.info{background:var(--orange-light);color:var(--orange-dark);border-left:3px solid var(--orange)}\n\n  .section-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;\n    color:var(--orange);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--orange-mid)}\n  .prefilled-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px}\n  .prefilled-field{background:var(--grey-light);border:1px solid var(--border);border-radius:2px;\n    padding:12px 14px;position:relative}\n  .prefilled-field.full{grid-column:1/-1}\n  .prefilled-field label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;\n    color:var(--grey-mid);display:block;margin-bottom:4px}\n  .prefilled-field .value{font-size:14px;font-weight:500;color:var(--black)}\n  .prefilled-field .lock{position:absolute;top:12px;right:12px;font-size:11px;color:var(--grey-mid);opacity:.5}\n\n  .balance-pill{background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:2px;\n    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}\n  .balance-pill .bp-label{font-size:12px;font-weight:500;color:var(--orange-dark);letter-spacing:.04em}\n  .balance-pill .bp-sub{font-size:11px;color:var(--grey-mid);margin-top:2px}\n  .balance-pill .bp-days{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--orange)}\n  .balance-pill .bp-days span{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;\n    color:var(--orange-dark);margin-left:4px}\n\n  .leave-types{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px}\n  .lt-btn{border:2px solid var(--border);background:var(--white);border-radius:2px;padding:12px 14px;\n    cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--grey-dark);\n    text-align:left;transition:all .2s ease;display:flex;align-items:center;gap:8px}\n  .lt-btn:hover{border-color:var(--orange);background:var(--orange-light);color:var(--orange-dark)}\n  .lt-btn.selected{border-color:var(--orange);background:var(--orange);color:white}\n  .lt-dot{width:8px;height:8px;border-radius:50%;border:2px solid currentColor;flex-shrink:0;transition:all .2s}\n  .lt-btn.selected .lt-dot{background:white;border-color:white}\n\n  .notice-box{background:var(--orange-light);border:1px solid var(--orange-mid);\n    border-left:3px solid var(--orange);padding:12px 14px;border-radius:2px;font-size:12px;\n    color:var(--orange-dark);margin-bottom:20px;line-height:1.5;display:none}\n  .notice-box.show{display:block}\n\n  .fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}\n  .field-group{display:flex;flex-direction:column;gap:6px}\n  .field-group.full{grid-column:1/-1}\n  .field-group label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-dark)}\n  .field-group label .req{color:var(--orange);margin-left:2px}\n  .field-group input,.field-group select,.field-group textarea{padding:12px 14px;border:2px solid var(--border);\n    border-radius:2px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);\n    background:var(--white);outline:none;transition:all .2s ease;width:100%}\n  .field-group input:focus,.field-group select:focus,.field-group textarea:focus{\n    border-color:var(--orange);box-shadow:0 0 0 4px rgba(232,93,4,0.08)}\n  .field-group input[readonly]{background:var(--grey-light);color:var(--grey-mid);cursor:not-allowed}\n  .field-group textarea{resize:vertical;min-height:80px}\n  .field-group.has-error input,.field-group.has-error select,.field-group.has-error textarea{border-color:var(--error)}\n  .field-error{font-size:11px;color:var(--error);margin-top:2px;display:none}\n  .field-group.has-error .field-error{display:block}\n\n  .days-summary{background:var(--black);color:white;border-radius:2px;padding:16px 20px;\n    display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;display:none}\n  .days-summary.show{display:flex}\n  .ds-label{font-size:12px;font-weight:500;color:rgba(255,255,255,0.6);letter-spacing:.06em;text-transform:uppercase}\n  .ds-value{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--orange)}\n  .ds-value span{font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(255,255,255,0.5)}\n\n  .policy-note{background:var(--grey-light);border-radius:2px;padding:14px 16px;font-size:12px;\n    color:var(--grey-mid);line-height:1.6;margin-bottom:28px;border-left:3px solid var(--border)}\n\n  .btn{width:100%;padding:16px;border:none;border-radius:2px;font-family:'DM Sans',sans-serif;\n    font-size:14px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;\n    transition:all .2s ease}\n  .btn-primary{background:var(--orange);color:white}\n  .btn-primary:hover{background:var(--orange-dark);transform:translateY(-1px);\n    box-shadow:0 6px 20px rgba(232,93,4,0.3)}\n  .btn-primary:disabled{background:var(--grey-mid);cursor:not-allowed;transform:none;box-shadow:none}\n  .btn-back{background:transparent;color:var(--grey-mid);border:2px solid var(--border);margin-bottom:12px}\n  .btn-back:hover{border-color:var(--grey-dark);color:var(--grey-dark)}\n\n  .success-page{text-align:center;padding:20px 0}\n  .success-icon{width:72px;height:72px;background:#EDFAF3;border-radius:50%;display:flex;\n    align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px}\n  .success-page h2{font-family:'Playfair Display',serif;font-size:22px;color:var(--black);margin-bottom:8px}\n  .success-page p{color:var(--grey-mid);font-size:14px;line-height:1.6;max-width:360px;margin:0 auto 28px}\n  .success-detail{background:var(--grey-light);border-radius:2px;padding:20px;text-align:left;margin-bottom:24px}\n  .sdr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}\n  .sdr:last-child{border-bottom:none}\n  .sdr .sd-l{color:var(--grey-mid)}\n  .sdr .sd-v{font-weight:600;color:var(--black)}\n\n  .footer-note{font-size:11px;color:var(--grey-mid);text-align:center;margin-top:28px;letter-spacing:.03em}\n  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;\n    border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}\n\n  @keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}\n  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}\n  @keyframes fadeIn{from{opacity:0}to{opacity:1}}\n  @keyframes spin{to{transform:rotate(360deg)}}\n\n  @media(max-width:520px){\n    .form-body{padding:24px 20px}\n    .prefilled-grid,.fields-grid,.leave-types{grid-template-columns:1fr}\n    .prefilled-field.full{grid-column:1}\n    .card-header{padding:20px 24px}\n  }\n</style>\n</head>\n<body>\n\n<div class=\"logo-wrap\">\n  <div class=\"logo-badge\">\n    <div class=\"logo-icon\"><div class=\"logo-dot\"></div><div class=\"logo-dot\"></div></div>\n    <div class=\"logo-text\">Orange Group</div>\n  </div>\n</div>\n\n<div class=\"card\">\n  <div class=\"card-header\">\n    <h1>Leave Application</h1>\n    <p>Submit your leave request for manager &amp; HR review</p>\n  </div>\n\n  <div class=\"progress-bar\">\n    <div class=\"progress-step active\" id=\"si1\"><div class=\"step-num\">1</div>Verify Identity</div>\n    <div class=\"progress-step\" id=\"si2\"><div class=\"step-num\">2</div>Request Details</div>\n    <div class=\"progress-step\" id=\"si3\"><div class=\"step-num\">3</div>Confirmation</div>\n  </div>\n\n  <div class=\"form-body\">\n\n    <!-- PAGE 1 -->\n    <div class=\"page active\" id=\"page1\">\n      <div class=\"id-lookup\">\n        <div class=\"id-icon\">\ud83e\udeaa</div>\n        <h2>Enter Your Employee ID</h2>\n        <p>Your details will be automatically pulled from table_4 records. No manual entry required.</p>\n        <div class=\"id-input-group\">\n          <div class=\"id-prefix\">ODL</div>\n          <input type=\"text\" id=\"empId\" placeholder=\"0000\" maxlength=\"6\" inputmode=\"numeric\" autocomplete=\"off\">\n        </div>\n        <div class=\"id-hint\">Your Staff ID number (e.g. ODL0700)</div>\n        <div class=\"alert error\" id=\"lookupError\"><span>\u26a0</span><span id=\"lookupErrorMsg\">Employee ID not found.</span></div>\n      </div>\n      <button class=\"btn btn-primary\" id=\"lookupBtn\" onclick=\"lookupEmployee()\" disabled>Continue \u2192</button>\n    </div>\n\n    <!-- PAGE 2 -->\n    <div class=\"page\" id=\"page2\">\n      <input type=\"hidden\" id=\"f_employeeId\">\n      <input type=\"hidden\" id=\"f_leaveType\" value=\"\">\n\n      <div class=\"section-label\">Your Details</div>\n      <div class=\"prefilled-grid\">\n        <div class=\"prefilled-field\"><label>Full Name</label><div class=\"value\" id=\"d_name\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n        <div class=\"prefilled-field\"><label>Staff ID</label><div class=\"value\" id=\"d_id\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n        <div class=\"prefilled-field\"><label>Department</label><div class=\"value\" id=\"d_dept\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n        <div class=\"prefilled-field\"><label>Branch</label><div class=\"value\" id=\"d_branch\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n        <div class=\"prefilled-field full\"><label>Job Role</label><div class=\"value\" id=\"d_role\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n        <div class=\"prefilled-field full\"><label>Line Manager</label><div class=\"value\" id=\"d_manager\">\u2014</div><div class=\"lock\">\ud83d\udd12</div></div>\n      </div>\n\n      <div class=\"balance-pill\" id=\"balancePill\">\n        <div><div class=\"bp-label\">Annual Leave Balance</div><div class=\"bp-sub\" id=\"d_usedLabel\"></div></div>\n        <div class=\"bp-days\" id=\"d_balance\">\u2014 <span>days remaining</span></div>\n      </div>\n\n      <div class=\"section-label\">Type of Leave</div>\n      <div class=\"leave-types\">\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Annual Leave')\"><div class=\"lt-dot\"></div>Annual Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Sick Leave')\"><div class=\"lt-dot\"></div>Sick Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Casual Leave')\"><div class=\"lt-dot\"></div>Casual Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Compassionate Leave')\"><div class=\"lt-dot\"></div>Compassionate Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Maternity Leave')\"><div class=\"lt-dot\"></div>Maternity Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Paternity Leave')\"><div class=\"lt-dot\"></div>Paternity Leave</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Leave of Absence')\"><div class=\"lt-dot\"></div>Leave of Absence</button>\n        <button type=\"button\" class=\"lt-btn\" onclick=\"selectLeave(this,'Examination Leave')\"><div class=\"lt-dot\"></div>Examination Leave</button>\n      </div>\n      <div class=\"notice-box\" id=\"leaveNotice\"></div>\n\n      <div class=\"section-label\">Leave Period</div>\n      <div class=\"fields-grid\">\n        <div class=\"field-group\"><label>Start Date <span class=\"req\">*</span></label>\n          <input type=\"date\" id=\"f_start\" onchange=\"calcDays()\">\n          <div class=\"field-error\">Required</div></div>\n        <div class=\"field-group\"><label>End Date <span class=\"req\">*</span></label>\n          <input type=\"date\" id=\"f_end\" onchange=\"calcDays()\">\n          <div class=\"field-error\">Must be after start date</div></div>\n        <div class=\"field-group\"><label>Resumption Date</label>\n          <input type=\"date\" id=\"f_resumption\" readonly></div>\n        <div class=\"field-group\"><label>Days Previously Taken</label>\n          <input type=\"text\" id=\"d_prevDays\" readonly></div>\n      </div>\n\n      <div class=\"days-summary\" id=\"daysSummary\">\n        <div class=\"ds-label\">Days Requested</div>\n        <div class=\"ds-value\" id=\"ds_days\">0 <span>working days</span></div>\n      </div>\n      <div class=\"alert error\" id=\"balanceError\"><span>\u26a0</span><span id=\"balanceErrorMsg\"></span></div>\n\n      <div class=\"section-label\">Additional Details</div>\n      <div class=\"fields-grid\">\n        <div class=\"field-group full\"><label>Name of Reliever <span class=\"req\">*</span></label>\n          <select id=\"f_reliever\"><option value=\"\">\u2014 Select reliever \u2014</option></select>\n          <div class=\"field-error\">Please select a reliever</div></div>\n        <div class=\"field-group full\"><label>Contact Address During Leave <span class=\"req\">*</span></label>\n          <textarea id=\"f_address\" placeholder=\"Full address where you can be reached\u2026\"></textarea>\n          <div class=\"field-error\">Please provide your contact address</div></div>\n        <div class=\"field-group\"><label>Phone Number <span class=\"req\">*</span></label>\n          <input type=\"tel\" id=\"f_phone\" placeholder=\"080XXXXXXXX\">\n          <div class=\"field-error\">Please enter your phone number</div></div>\n      </div>\n\n      <div class=\"policy-note\" id=\"policyNote\"></div>\n      <div class=\"alert error\" id=\"submitError\"><span>\u26a0</span><span id=\"submitErrorMsg\">Something went wrong.</span></div>\n\n      <button class=\"btn btn-back\" onclick=\"goBack()\">\u2190 Change Employee ID</button>\n      <button class=\"btn btn-primary\" id=\"submitBtn\" onclick=\"submitRequest()\">Submit Leave Request</button>\n    </div>\n\n    <!-- PAGE 3 -->\n    <div class=\"page\" id=\"page3\">\n      <div class=\"success-page\">\n        <div class=\"success-icon\">\u2705</div>\n        <h2>Request Submitted</h2>\n        <p>Your leave application has been sent to your line manager. You will receive an email once a decision is made.</p>\n        <div class=\"success-detail\">\n          <div class=\"sdr\"><span class=\"sd-l\">Request ID</span><span class=\"sd-v\" id=\"s_reqId\">\u2014</span></div>\n          <div class=\"sdr\"><span class=\"sd-l\">Employee</span><span class=\"sd-v\" id=\"s_name\">\u2014</span></div>\n          <div class=\"sdr\"><span class=\"sd-l\">Leave Type</span><span class=\"sd-v\" id=\"s_type\">\u2014</span></div>\n          <div class=\"sdr\"><span class=\"sd-l\">Period</span><span class=\"sd-v\" id=\"s_period\">\u2014</span></div>\n          <div class=\"sdr\"><span class=\"sd-l\">Days</span><span class=\"sd-v\" id=\"s_days\">\u2014</span></div>\n          <div class=\"sdr\"><span class=\"sd-l\">Status</span><span class=\"sd-v\" style=\"color:var(--orange)\">Pending Manager Review</span></div>\n        </div>\n        <button class=\"btn btn-primary\" onclick=\"resetForm()\">Submit Another Request</button>\n      </div>\n    </div>\n\n  </div>\n</div>\n\n<div class=\"footer-note\">Orange Group Leave Management System \u00b7 Confidential</div>\n\n<script>\n// \u2500\u2500 DATA: employees baked in from table_5 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst ALL_EMPLOYEES = JSON.parse(atob('${encoded}'));\n\n// \u2500\u2500 CONFIG \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nconst N8N_BASE = '[URL]';\n\n// \u2500\u2500 LOOKUP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlet employeeData = null;\n\nconst notices = {\n  'Annual Leave':'Deducts from table_6 balance. Minimum <strong>2 weeks notice</strong> required. Recommended: March\u2013October.',\n  'Sick Leave':'Medical certificate from table_7 registered practitioner required within 24 hours.',\n  'Casual Leave':'Max 3 days/year. Only after annual leave is exhausted.',\n  'Compassionate Leave':'Max 5 working days/year. Subject to management discretion.',\n  'Maternity Leave':'12 weeks. Medical certificate required at least <strong>1 month in advance</strong>.',\n  'Paternity Leave':'5 working days. <strong>Not</strong> deducted from table_8 leave balance.',\n  'Leave of Absence':'Unpaid. Final approval at management discretion.',\n  'Examination Leave':'Max 5 working days. Use annual leave where possible.'\n};\n\nconst policyNotes = {\n  'Annual Leave':'Policy: Leave must be used within the calendar year. Unused days are forfeited Dec 31. Payment in lieu not permitted.',\n  'Casual Leave':'Policy: Only available after annual leave entitlement is fully exhausted.',\n  'Maternity Leave':'Policy: Only available to employees with 6+ months of service.',\n  'Paternity Leave':'Policy: Available to male employees upon birth of child.',\n  'Compassionate Leave':'Policy: Supporting documentation may be required on return.'\n};\n\ndocument.getElementById('empId').addEventListener('input', function(){\n  document.getElementById('lookupBtn').disabled = this.value.trim().length < 1;\n  document.getElementById('lookupError').classList.remove('show');\n});\n\ndocument.getElementById('empId').addEventListener('keydown', function(e){\n  if(e.key==='Enter' && !document.getElementById('lookupBtn').disabled) lookupEmployee();\n});\n\nfunction lookupEmployee(){\n  const raw = document.getElementById('empId').value.trim();\n  const empId = 'ODL' + raw;\n  const emp = ALL_EMPLOYEES.find(e => String(e.EmployeeID||'').trim() === empId);\n\n  if(!emp){\n    document.getElementById('lookupError').classList.add('show');\n    document.getElementById('lookupErrorMsg').textContent = 'No employee found with ID \"' + empId + '\". Please check and try again.';\n    return;\n  }\n\n  employeeData = emp;\n  populatePage2(emp);\n  goToPage2();\n}\n\nfunction populatePage2(emp){\n  document.getElementById('d_name').textContent = emp.FullName || '\u2014';\n  document.getElementById('d_id').textContent = emp.EmployeeID || '\u2014';\n  document.getElementById('d_dept').textContent = emp.Department || '\u2014';\n  document.getElementById('d_branch').textContent = emp.Branch || emp.Department || '\u2014';\n  document.getElementById('d_role').textContent = emp.Role || '\u2014';\n  document.getElementById('d_manager').textContent = emp['Manager Name'] || emp.ManagerName || '\u2014';\n  document.getElementById('f_employeeId').value = emp.EmployeeID;\n\n  const balance = parseFloat(emp.LeaveBalance) || 0;\n  const total = parseFloat(emp.TotalLeaveDays) || 0;\n  const used = Math.max(0, total - balance);\n  document.getElementById('d_balance').innerHTML = balance + ' <span>days remaining</span>';\n  document.getElementById('d_usedLabel').textContent = used + ' days used this year';\n  document.getElementById('d_prevDays').value = used + ' days';\n\n  const sel = document.getElementById('f_reliever');\n  sel.innerHTML = '<option value=\"\">\u2014 Select reliever \u2014</option>';\n  ALL_EMPLOYEES.forEach(e => {\n    if(e.EmployeeID !== emp.EmployeeID){\n      const opt = document.createElement('option');\n      opt.value = e.FullName;\n      opt.textContent = e.FullName + ' (' + (e.Department||'') + ')';\n      sel.appendChild(opt);\n    }\n  });\n\n  const today = new Date().toISOString().split('T')[0];\n  document.getElementById('f_start').min = today;\n  document.getElementById('f_end').min = today;\n}\n\nfunction selectLeave(btn, type){\n  document.querySelectorAll('.lt-btn').forEach(b => b.classList.remove('selected'));\n  btn.classList.add('selected');\n  document.getElementById('f_leaveType').value = type;\n\n  const nb = document.getElementById('leaveNotice');\n  if(notices[type]){ nb.innerHTML = '\u2139\ufe0f <strong>' + type + ':</strong> ' + notices[type]; nb.classList.add('show'); }\n  else nb.classList.remove('show');\n\n  const pn = document.getElementById('policyNote');\n  pn.textContent = policyNotes[type] ? policyNotes[type] : '';\n\n  document.getElementById('balancePill').style.opacity = type === 'Annual Leave' ? '1' : '0.6';\n  calcDays();\n}\n\nfunction calcDays(){\n  const s = document.getElementById('f_start').value;\n  const e = document.getElementById('f_end').value;\n  document.getElementById('balanceError').classList.remove('show');\n\n  if(!s || !e){ document.getElementById('daysSummary').classList.remove('show'); return; }\n\n  const sd = new Date(s), ed = new Date(e);\n  if(ed < sd){\n    document.getElementById('f_end').closest('.field-group').classList.add('has-error');\n    document.getElementById('daysSummary').classList.remove('show'); return;\n  }\n  document.getElementById('f_end').closest('.field-group').classList.remove('has-error');\n\n  let days = 0, cur = new Date(sd);\n  while(cur <= ed){ const d = cur.getDay(); if(d!==0&&d!==6) days++; cur.setDate(cur.getDate()+1); }\n\n  const res = new Date(ed);\n  res.setDate(res.getDate()+1);\n  while(res.getDay()===0||res.getDay()===6) res.setDate(res.getDate()+1);\n  document.getElementById('f_resumption').value = res.toISOString().split('T')[0];\n\n  document.getElementById('ds_days').innerHTML = days + ' <span>working days</span>';\n  document.getElementById('daysSummary').classList.add('show');\n\n  if(document.getElementById('f_leaveType').value === 'Annual Leave' && employeeData){\n    const bal = parseFloat(employeeData.LeaveBalance)||0;\n    if(days > bal){\n      document.getElementById('balanceError').classList.add('show');\n      document.getElementById('balanceErrorMsg').textContent = 'Insufficient balance. Requested ' + days + ' days but only ' + bal + ' remaining.';\n    }\n  }\n}\n\nasync function submitRequest(){\n  let valid = true;\n  const leaveType = document.getElementById('f_leaveType').value;\n  if(!leaveType){ alert('Please select a leave type.'); return; }\n\n  [\n    {id:'f_start',msg:'Required'},\n    {id:'f_end',msg:'Must be after start date'},\n    {id:'f_reliever',msg:'Please select a reliever'},\n    {id:'f_address',msg:'Please provide your contact address'},\n    {id:'f_phone',msg:'Please enter your phone number'}\n  ].forEach(f => {\n    const el = document.getElementById(f.id);\n    const grp = el.closest('.field-group');\n    if(!el.value.trim()){ grp.classList.add('has-error'); valid = false; }\n    else grp.classList.remove('has-error');\n  });\n\n  if(!valid) return;\n  if(document.getElementById('balanceError').classList.contains('show')) return;\n\n  const btn = document.getElementById('submitBtn');\n  btn.disabled = true;\n  btn.innerHTML = '<span class=\"spinner\"></span>Submitting\u2026';\n  document.getElementById('submitError').classList.remove('show');\n\n  const s = document.getElementById('f_start').value;\n  const e = document.getElementById('f_end').value;\n  let days = 0, cur = new Date(s), ed = new Date(e);\n  while(cur<=ed){ if(cur.getDay()!==0&&cur.getDay()!==6) days++; cur.setDate(cur.getDate()+1); }\n\n  const requestId = 'LV-' + employeeData.EmployeeID + '-' + Date.now();\n\n  try {\n    const res = await fetch(N8N_BASE + '/submit-leave-request', {\n      method:'POST',\n      headers:{'Content-Type':'application/json'},\n      body: JSON.stringify({\n        requestId, employeeId: employeeData.EmployeeID,\n        employeeName: employeeData.FullName, employeeEmail: employeeData.Email,\n        department: employeeData.Department, role: employeeData.Role,\n        managerEmail: employeeData.ManagerEmail,\n        leaveType, startDate: s, endDate: e,\n        resumptionDate: document.getElementById('f_resumption').value,\n        numberOfDays: days,\n        daysPreviousTaken: document.getElementById('d_prevDays').value,\n        reliever: document.getElementById('f_reliever').value,\n        contactAddress: document.getElementById('f_address').value,\n        phoneNumber: document.getElementById('f_phone').value\n      })\n    });\n\n    if(!res.ok) throw new Error('Server error');\n\n    document.getElementById('s_reqId').textContent = requestId;\n    document.getElementById('s_name').textContent = employeeData.FullName;\n    document.getElementById('s_type').textContent = leaveType;\n    document.getElementById('s_period').textContent = s + ' \u2192 ' + e;\n    document.getElementById('s_days').textContent = days + ' working days';\n    goToPage3();\n\n  } catch(err){\n    document.getElementById('submitError').classList.add('show');\n    document.getElementById('submitErrorMsg').textContent = 'Submission failed. Please try again or contact IT.';\n    btn.disabled = false;\n    btn.textContent = 'Submit Leave Request';\n  }\n}\n\nfunction goToPage2(){\n  setPage('page2');\n  document.getElementById('si1').classList.replace('active','done');\n  document.getElementById('si1').querySelector('.step-num').textContent = '\u2713';\n  document.getElementById('si2').classList.add('active');\n}\n\nfunction goToPage3(){\n  setPage('page3');\n  document.getElementById('si2').classList.replace('active','done');\n  document.getElementById('si2').querySelector('.step-num').textContent = '\u2713';\n  document.getElementById('si3').classList.add('active');\n}\n\nfunction goBack(){\n  setPage('page1');\n  document.getElementById('si1').classList.remove('done');\n  document.getElementById('si1').classList.add('active');\n  document.getElementById('si1').querySelector('.step-num').textContent = '1';\n  document.getElementById('si2').classList.remove('active');\n  document.getElementById('empId').value = '';\n  document.getElementById('lookupBtn').disabled = true;\n}\n\nfunction setPage(id){\n  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));\n  document.getElementById(id).classList.add('active');\n  window.scrollTo(0,0);\n}\n\nfunction resetForm(){\n  employeeData = null;\n  document.getElementById('f_leaveType').value = '';\n  document.querySelectorAll('.lt-btn').forEach(b => b.classList.remove('selected'));\n  ['f_start','f_end','f_resumption','f_address','f_phone'].forEach(id => document.getElementById(id).value = '');\n  document.getElementById('leaveNotice').classList.remove('show');\n  document.getElementById('daysSummary').classList.remove('show');\n  document.getElementById('balanceError').classList.remove('show');\n  document.getElementById('si2').classList.remove('done','active');\n  document.getElementById('si2').querySelector('.step-num').textContent = '2';\n  document.getElementById('si3').classList.remove('active');\n  document.getElementById('si3').querySelector('.step-num').textContent = '3';\n  goBack();\n}\n</script>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];\n"
+      },
+      "id": "__NODE_21__",
+      "name": "Build HTML: Employee Form1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        6240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "submit-leave-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_22__",
+      "name": "POST: Submit Leave Request1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        6640
+      ],
+      "webhookId": "__WEBHOOK_4__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body=$input.first().json.body||$input.first().json;\nconst required=['requestId','employeeId','employeeEmail','leaveType','startDate','endDate','numberOfDays','reliever','contactAddress','phoneNumber','managerEmail'];\nconst missing=required.filter(k=>!body[k]);\nif(missing.length>0) throw new Error('Missing: '+missing.join(', '));\nconst s=new Date(body.startDate),e=new Date(body.endDate);\nif(isNaN(s)||isNaN(e)) throw new Error('Invalid date format');\nif(e<s) throw new Error('End date before start date');\nconst days=parseInt(body.numberOfDays);\nif(days<1) throw new Error('Days must be at least 1');\nreturn [{json:{...body,numberOfDays:days,requestDate:new Date().toISOString().split('T')[0]}}];"
+      },
+      "id": "__NODE_23__",
+      "name": "Validate Request1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_24__",
+      "name": "Get Employee (Submit)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        736,
+        6640
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const form=$('Validate Request1').first().json;\nconst emp=$input.first().json;\nif(!emp||!emp.EmployeeID) throw new Error('Employee not found: '+form.employeeId);\nconst balance=parseFloat(emp.LeaveBalance)||0;\nif(form.leaveType==='Annual Leave'&&parseInt(form.numberOfDays)>balance)\n  throw new Error('Insufficient balance. Requested: '+form.numberOfDays+', Available: '+balance);\nreturn [{json:{...form,employeeBalance:balance,employeeFullName:emp.FullName}}];"
+      },
+      "id": "__NODE_25__",
+      "name": "Check Leave Balance1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "RequestID": "={{ $json.requestId }}",
+            "EmployeeID": "={{ $json.employeeId }}",
+            "EmployeeEmail": "={{ $json.employeeEmail }}",
+            "LeaveType": "={{ $json.leaveType }}",
+            "StartDate": "={{ $json.startDate }}",
+            "EndDate": "={{ $json.endDate }}",
+            "ResumptionDate": "={{ $json.resumptionDate }}",
+            "NumberOfDays": "={{ $json.numberOfDays }}",
+            "DaysPreviousTaken": "={{ $json.daysPreviousTaken }}",
+            "Status": "pending",
+            "RequestDate": "={{ $json.requestDate }}",
+            "Reliever": "={{ $json.reliever }}",
+            "ContactAddress": "={{ $json.contactAddress }}",
+            "PhoneNumber": "REDACTED"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "RequestID",
+              "displayName": "RequestID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "EmployeeID",
+              "displayName": "EmployeeID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "EmployeeEmail",
+              "displayName": "EmployeeEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LeaveType",
+              "displayName": "LeaveType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "StartDate",
+              "displayName": "StartDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "EndDate",
+              "displayName": "EndDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ResumptionDate",
+              "displayName": "ResumptionDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "NumberOfDays",
+              "displayName": "NumberOfDays",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DaysPreviousTaken",
+              "displayName": "DaysPreviousTaken",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RequestDate",
+              "displayName": "RequestDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ManagerComments",
+              "displayName": "ManagerComments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "BalanceUpdated",
+              "displayName": "BalanceUpdated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "HRStatus",
+              "displayName": "HRStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "HRComment",
+              "displayName": "HRComment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "HRDecisionDate",
+              "displayName": "HRDecisionDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ManagerDecisionDate ",
+              "displayName": "ManagerDecisionDate ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ManagerStatus",
+              "displayName": "ManagerStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Reliever",
+              "displayName": "Reliever",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ContactAddress",
+              "displayName": "ContactAddress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PhoneNumber",
+              "displayName": "PhoneNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "__NODE_26__",
+      "name": "Append to LeaveRequests1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1168,
+        6640
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $('Check Leave Balance1').item.json.managerEmail }}",
+        "subject": "=Action Required: Leave Request from {{ $('Check Leave Balance1').item.json.employeeFullName }}",
+        "text": "[URL]",
+        "options": {}
+      },
+      "id": "__NODE_27__",
+      "name": "Email Manager1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        6640
+      ],
+      "webhookId": "__WEBHOOK_5__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"requestId\": \"{{ $('Check Leave Balance1').first().json.requestId }}\", \"message\": \"Request submitted. Your manager will be notified.\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "__NODE_28__",
+      "name": "Respond: Submit Success1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        6640
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "submit-manager-decision",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_29__",
+      "name": "POST: Manager Decision1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        6608
+      ],
+      "webhookId": "__WEBHOOK_6__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body=$input.first().json.body||$input.first().json;\nif(!body.requestId) throw new Error('Missing requestId');\nif(!['approve','reject'].includes(body.decision)) throw new Error('Invalid decision');\nreturn [{json:body}];"
+      },
+      "id": "__NODE_30__",
+      "name": "Validate Manager Decision1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        6608
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_31__",
+      "name": "Get Request (Manager Flow)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2416,
+        6608
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ManagerStatus": "={{ $('Validate Manager Decision1').first().json.decision === 'approve' ? 'Approved' : 'Rejected' }}",
+            "ManagerComment": "={{ $('Validate Manager Decision1').first().json.comment || '' }}",
+            "ManagerDecisionDate": "={{ new Date().toISOString().split('T')[0] }}"
+          },
+          "matchingColumns": [
+            "RequestID"
+          ],
+          "schema": [
+            {
+              "id": "RequestID",
+              "displayName": "RequestID",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "__NODE_32__",
+      "name": "Update: Manager Status1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2640,
+        6608
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('Validate Manager Decision1').first().json.decision }}",
+              "operation": "equals",
+              "value2": "approve"
+            }
+          ]
+        }
+      },
+      "id": "__NODE_33__",
+      "name": "Manager Approved?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        6608
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "=HR Action Required: Leave Approved by Manager \u2014 {{ $('Get Request (Manager Flow)1').first().json.EmployeeID }}",
+        "options": {}
+      },
+      "id": "__NODE_34__",
+      "name": "Email HR (Approved by Manager)1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        6528
+      ],
+      "webhookId": "__WEBHOOK_7__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_35__",
+      "name": "Get Employee (Rejection)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3072,
+        6704
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $json.Email }}",
+        "subject": "Your Leave Request Has Been Rejected",
+        "options": {}
+      },
+      "id": "__NODE_36__",
+      "name": "Email Employee (Manager Rejected)1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        3296,
+        6704
+      ],
+      "webhookId": "__WEBHOOK_8__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"message\": \"Decision recorded. Relevant parties notified.\" }",
+        "options": {}
+      },
+      "id": "__NODE_37__",
+      "name": "Respond: Manager Decision OK1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        6608
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "submit-hr-decision",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_38__",
+      "name": "POST: HR Decision1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        928,
+        7424
+      ],
+      "webhookId": "__WEBHOOK_9__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body=$input.first().json.body||$input.first().json;\nif(!body.requestId) throw new Error('Missing requestId');\nif(!['approve','reject'].includes(body.decision)) throw new Error('Invalid decision');\nif(body.decision==='reject'&&!body.comment) throw new Error('HR must provide comment when rejecting');\nreturn [{json:body}];"
+      },
+      "id": "__NODE_39__",
+      "name": "Validate HR Decision1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        7424
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_40__",
+      "name": "Get Request (HR Flow)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1344,
+        7424
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "Employees",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "id": "__NODE_41__",
+      "name": "Get Employee (HR Flow)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1568,
+        7424
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Leave Manager",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1923592908,
+          "mode": "list",
+          "cachedResultName": "LeaveRequests",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "HRStatus": "={{ $('Validate HR Decision1').first().json.decision === 'approve' ? 'Approved' : 'Rejected' }}",
+            "HRComment": "={{ $('Validate HR Decision1').first().json.comment || '' }}",
+            "HRDecisionDate": "={{ new Date().toISOString().split('T')[0] }}",
+            "BalanceUpdated": "={{ $('Validate HR Decision1').first().json.decision === 'approve' && $('Get Request (HR Flow)1').first().json.LeaveType === 'Annual Leave' ? 'Yes' : 'No' }}"
+          },
+          "matchingColumns": [
+            "RequestID"
+          ],
+          "schema": [
+            {
+              "id": "RequestID",
+              "displayName": "RequestID",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "__NODE_42__",
+      "name": "Update: HR Status1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1776,
+        7424
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('Validate HR Decision1').first().json.decision }}",
+              "operation": "equals",
+              "value2": "approve"
+            }
+          ]
+        }
+      },
+      "id": "__NODE_43__",
+      "name": "HR Approved?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        7424
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req=$('Get Request (HR Flow)1').first().json;\nconst emp=$('Get Employee (HR Flow)1').first().json;\nif(req.LeaveType!=='Annual Leave') return [{json:{skip:true,employeeId:emp.EmployeeID,LeaveBalance:emp.LeaveBalance}}];\nconst currentBalance=parseFloat(emp.LeaveBalance)||0;\nconst daysUsed=parseInt(req.NumberOfDays)||0;\nconst newBalance=currentBalance-daysUsed;\nif(newBalance<0) throw new Error('Balance cannot go negative. Current: '+currentBalance+', Requested: '+daysUsed);\nreturn [{json:{skip:false,employeeId:emp.EmployeeID,newBalance,currentBalance,daysDeducted:daysUsed}}];"
+      },
+      "id": "__NODE_44__",
+      "name": "Calculate New Balance1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        7344
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $('Get Employee (HR Flow)1').first().json.Email }}",
+        "subject": "=\u2705 Your Leave Request Has Been Approved",
+        "options": {}
+      },
+      "id": "__NODE_45__",
+      "name": "Email Employee (HR Approved)1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2656,
+        7344
+      ],
+      "webhookId": "__WEBHOOK_10__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $('Get Employee (HR Flow)1').first().json.Email }}",
+        "subject": "=\u274c Your Leave Request Has Been Rejected by HR",
+        "options": {}
+      },
+      "id": "__NODE_46__",
+      "name": "Email Employee (HR Rejected)1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        7520
+      ],
+      "webhookId": "__WEBHOOK_11__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"message\": \"HR decision recorded. All parties notified.\" }",
+        "options": {}
+      },
+      "id": "__NODE_47__",
+      "name": "Respond: HR Decision OK1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        7424
+      ]
+    }
+  ],
+  "connections": {
+    "GET: Employee Form": {
+      "main": [
+        [
+          {
+            "node": "Get All Employees1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET: Manager Approval Form": {
+      "main": [
+        [
+          {
+            "node": "Get Request (Manager Form)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request (Manager Form)": {
+      "main": [
+        [
+          {
+            "node": "Get Employee (Manager Form)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee (Manager Form)": {
+      "main": [
+        [
+          {
+            "node": "Build HTML: Manager Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML: Manager Form": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET: HR Approval Form": {
+      "main": [
+        [
+          {
+            "node": "Get Request (HR Form)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request (HR Form)": {
+      "main": [
+        [
+          {
+            "node": "Get Employee (HR Form)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee (HR Form)": {
+      "main": [
+        [
+          {
+            "node": "Build HTML: HR Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML: HR Form": {
+      "main": [
+        [
+          {
+            "node": "Respond: HR Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduct Leave Balance": {
+      "main": [
+        [
+          {
+            "node": "Email Employee (HR Approved)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Employees1": {
+      "main": [
+        [
+          {
+            "node": "Build HTML: Employee Form1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML: Employee Form1": {
+      "main": [
+        [
+          {
+            "node": "Respond: Employee Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST: Submit Leave Request1": {
+      "main": [
+        [
+          {
+            "node": "Validate Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request1": {
+      "main": [
+        [
+          {
+            "node": "Get Employee (Submit)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee (Submit)1": {
+      "main": [
+        [
+          {
+            "node": "Check Leave Balance1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Leave Balance1": {
+      "main": [
+        [
+          {
+            "node": "Append to LeaveRequests1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to LeaveRequests1": {
+      "main": [
+        [
+          {
+            "node": "Email Manager1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Manager1": {
+      "main": [
+        [
+          {
+            "node": "Respond: Submit Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST: Manager Decision1": {
+      "main": [
+        [
+          {
+            "node": "Validate Manager Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Manager Decision1": {
+      "main": [
+        [
+          {
+            "node": "Get Request (Manager Flow)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request (Manager Flow)1": {
+      "main": [
+        [
+          {
+            "node": "Update: Manager Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update: Manager Status1": {
+      "main": [
+        [
+          {
+            "node": "Manager Approved?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager Approved?1": {
+      "main": [
+        [
+          {
+            "node": "Email HR (Approved by Manager)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Employee (Rejection)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email HR (Approved by Manager)1": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager Decision OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee (Rejection)1": {
+      "main": [
+        [
+          {
+            "node": "Email Employee (Manager Rejected)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Employee (Manager Rejected)1": {
+      "main": [
+        [
+          {
+            "node": "Respond: Manager Decision OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST: HR Decision1": {
+      "main": [
+        [
+          {
+            "node": "Validate HR Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate HR Decision1": {
+      "main": [
+        [
+          {
+            "node": "Get Request (HR Flow)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request (HR Flow)1": {
+      "main": [
+        [
+          {
+            "node": "Get Employee (HR Flow)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee (HR Flow)1": {
+      "main": [
+        [
+          {
+            "node": "Update: HR Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update: HR Status1": {
+      "main": [
+        [
+          {
+            "node": "HR Approved?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HR Approved?1": {
+      "main": [
+        [
+          {
+            "node": "Calculate New Balance1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Employee (HR Rejected)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate New Balance1": {
+      "main": [
+        [
+          {
+            "node": "Deduct Leave Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Employee (HR Approved)1": {
+      "main": [
+        [
+          {
+            "node": "Respond: HR Decision OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Employee (HR Rejected)1": {
+      "main": [
+        [
+          {
+            "node": "Respond: HR Decision OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "GET: Employee Form": [
+      {
+        "json": {
+          "headers": {
+            "host": "orangegroupsai.online",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "max-age=0",
+            "cookie": "rl_page_init_referrer=RudderEncrypt%3AU2FsdGVkX1%2B6YAIFqafYWUH6Gp9q7ooFlZkdndngpYk%3D; rl_page_init_referring_domain=RudderEncrypt%3AU2FsdGVkX1%2FJz5m%2BlodEPTm7YlZNqlLk0NMp2jAXBFI%3D; rl_anonymous_id=RudderEncrypt%3AU2FsdGVkX1%2Bs19sSq5wdWYTwW9EzJ2TndtseL4BfxG8SamH0XR3PrnUjNk2g84%2BIv2U%2BORuT%2BQyaKu%2FmtkOaLA%3D%3D; rl_user_id=RudderEncrypt%3AU2FsdGVkX18u6sQwb%2Bv5sJdAANhxJcx5TVhijnC8%2Fp1fM7AFB5hlZmiKhvQNM2uSReLGFluOaQ%2FDWFi7r6BL4P7kQSl4JlCUJypNItwIgCG%2FXWXGCBhorsLnFHAbBYzIQOJV%2F44Jbqpe6Y%2BtCR%2F6Q4zojI%2BZ1lgloAUEfMZGqjY%3D; rl_trait=RudderEncrypt%3AU2FsdGVkX1%2BWz7aPXAaehLTKbB5cMSEAphPH9aTezKA5dVaRnJejfyukqwkcA4eWuiwoLAo7lOeLHQ12B9AHRa%2B10ykicPF8LXf0EtcBHLDl8xIUhupA2Cx5JFHcyn9KwyjeA0u33%2FFzBeDexYszY6EN75I%2FQ3oxqVFOkV6C5Gg%3D; rl_session=RudderEncrypt%3AU2FsdGVkX19OqZHmn2dcAFpZvAlETlUi3UQhFEW1revdu3tyt68q2SUBFL9iZZxMveGFZwPUQkdWd7jagZO%2F8NDecBB95SXTFIjZT9Pv54RGxZSo55%2BO%2FmKbuzc16r5pdCYNwvXcHN7yygo%2B%2BeRHJw%3D%3D; ph_phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo_posthog=%7B%22%24device_id%22%3A%22019c2803-aa72-794e-a227-e6d6337bd8b1%22%2C%22distinct_id%22%3A%22b2bfadd42c71c13d9ca428bae32a31a8d777c4ecf05903b17bf6d0d51e2b89c4%23d6320d31-a534-40f1-9f67-e1a589e8f288%22%2C%22%24sesid%22%3A%5B1774994321882%2C%22019d45d2-929d-7b45-adf3-8dee7083bac1%22%2C1774992921245%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22%24direct%22%2C%22u%22%3A%22https%3A%2F%2Forangegroupsai.online%2Fsignin%3Fredirect%3D%25252F%22%7D%2C%22%24user_state%22%3A%22identified%22%7D",
+            "if-none-match": "W/\"[ID]\"",
+            "priority": "u=0, i",
+            "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "none",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "x-forwarded-for": "105.127.13.133",
+            "x-forwarded-host": "orangegroupsai.online",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "e10704efd721",
+            "x-real-ip": "105.127.13.133"
+          },
+          "params": {},
+          "query": {},
+          "body": {},
+          "webhookUrl": "REDACTED",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "POST: Submit Leave Request1": [
+      {
+        "json": {
+          "headers": {
+            "host": "orangegroupsai.online",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+            "content-length": "445",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "application/json",
+            "origin": "null",
+            "priority": "u=1, i",
+            "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "105.127.13.133",
+            "x-forwarded-host": "orangegroupsai.online",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "e10704efd721",
+            "x-real-ip": "105.127.13.133"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "requestId": "LV-ODL0700-1774994930879",
+            "employeeId": "ODL0700",
+            "employeeName": "Adekunle",
+            "employeeEmail": "[EMAIL]",
+            "department": "AI",
+            "role": "AI",
+            "managerEmail": "[EMAIL]",
+            "leaveType": "Compassionate Leave",
+            "startDate": "2026-04-01",
+            "endDate": "2026-04-24",
+            "resumptionDate": "2026-04-27",
+            "numberOfDays": 18,
+            "daysPreviousTaken": "0 days",
+            "reliever": "Ajani",
+            "contactAddress": "4, gladys sowummi",
+            "phoneNumber": "REDACTED"
+          },
+          "webhookUrl": "REDACTED",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "__VERSION_ID__",
+  "activeVersionId": "b6f83aa4-5dd7-4485-b101-159e499fd104",
+  "versionCounter": 218,
+  "triggerCount": 6,
+  "shared": [
+    {
+      "updatedAt": "2026-03-29T21:24:39.225Z",
+      "createdAt": "2026-03-29T21:24:39.225Z",
+      "role": "workflow:owner",
+      "workflowId": "Vkh3CNiZVlu0qnkD",
+      "projectId": "ir6dYbaAlha8WGmA",
+      "project": {
+        "updatedAt": "2026-01-30T11:59:38.451Z",
+        "createdAt": "2026-01-30T11:25:24.975Z",
+        "id": "ir6dYbaAlha8WGmA",
+        "name": "Orange orangegroups.ai@gmail.com <orangegroups.ai@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "d6320d31-a534-40f1-9f67-e1a589e8f288"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version b6f83aa4",
+    "description": ""
+  },
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-06-26T13:55:21.586899+00:00",
+    "original_name": "Leave Management System",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "sheet": "table_1",
+      "balance.": "table_2",
+      "self": "table_3",
+      "HR": "table_4",
+      "n8n": "table_5",
+      "your": "table_6",
+      "a": "table_7",
+      "annual": "table_8"
+    },
+    "columns_renamed": {}
+  }
+}

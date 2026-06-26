@@ -1,0 +1,2024 @@
+{
+  "updatedAt": "2026-06-26T09:40:10.457Z",
+  "createdAt": "2026-06-12T10:56:20.844Z",
+  "id": "__WORKFLOW_ID__",
+  "name": "Favour - Digital Trade Promotion Agent",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ============================================================\n-- FAVOUR BOT \u2014 Complete Reproducible Schema\n-- Safe to run on a fresh Postgres instance\n-- Last updated: June 2026\n-- ============================================================\n\n-- Extensions\nCREATE EXTENSION IF NOT EXISTS vector;\n\n-- Sequences\nCREATE SEQUENCE IF NOT EXISTS favour_customer_code_seq START 1;\n\n-- Customers\nCREATE TABLE IF NOT EXISTS favour_customers (\n    id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),\n    wa_id                   text        UNIQUE NOT NULL,\n    customer_code           text        UNIQUE DEFAULT 'DTP-' || LPAD(nextval('favour_customer_code_seq')::text, 3, '0'),\n    display_name            text,\n    first_seen_at           timestamptz NOT NULL DEFAULT now(),\n    last_seen_at            timestamptz NOT NULL DEFAULT now(),\n    message_count           int         NOT NULL DEFAULT 0,\n    positive_interactions   int         NOT NULL DEFAULT 0\n);\n\n-- Conversations\nCREATE TABLE IF NOT EXISTS favour_conversations (\n    id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),\n    customer_id     uuid        NOT NULL REFERENCES favour_customers(id) ON DELETE CASCADE,\n    started_at      timestamptz NOT NULL DEFAULT now(),\n    last_msg_at     timestamptz NOT NULL DEFAULT now()\n);\n\n-- Messages\nCREATE TABLE IF NOT EXISTS favour_messages (\n    id                  uuid    PRIMARY KEY DEFAULT gen_random_uuid(),\n    conversation_id     uuid    NOT NULL REFERENCES favour_conversations(id) ON DELETE CASCADE,\n    customer_id         uuid    NOT NULL REFERENCES favour_customers(id) ON DELETE CASCADE,\n    role                text    NOT NULL CHECK (role IN ('user', 'assistant')),\n    content             text    NOT NULL,\n    created_at          timestamptz NOT NULL DEFAULT now()\n);\n\n-- Documents\nCREATE TABLE IF NOT EXISTS favour_documents (\n    id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),\n    file_name       text        UNIQUE NOT NULL,\n    bucket          text        NOT NULL DEFAULT 'favors-rag',\n    ingested_at     timestamptz NOT NULL DEFAULT now(),\n    chunk_count     int         NOT NULL DEFAULT 0\n);\n\n-- Embeddings\nCREATE TABLE IF NOT EXISTS favour_embeddings (\n    id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),\n    document_id     uuid        NOT NULL REFERENCES favour_documents(id) ON DELETE CASCADE,\n    file_name       text        NOT NULL,\n    chunk_index     int         NOT NULL,\n    content         text        NOT NULL,\n    embedding       vector(3072),\n    created_at      timestamptz NOT NULL DEFAULT now()\n);\n\n-- Escalations\nCREATE TABLE IF NOT EXISTS favour_escalations (\n    id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),\n    customer_id         uuid        NOT NULL REFERENCES favour_customers(id) ON DELETE CASCADE,\n    conversation_id     uuid        NOT NULL REFERENCES favour_conversations(id) ON DELETE CASCADE,\n    reason              text,\n    context             text,\n    resolved            boolean     NOT NULL DEFAULT false,\n    admin_response      text,\n    resolved_at         timestamptz,\n    created_at          timestamptz NOT NULL DEFAULT now()\n);\n\n-- Indexes\nCREATE INDEX IF NOT EXISTS idx_favour_messages_conversation    ON favour_messages(conversation_id);\nCREATE INDEX IF NOT EXISTS idx_favour_messages_customer        ON favour_messages(customer_id);\nCREATE INDEX IF NOT EXISTS idx_favour_embeddings_document      ON favour_embeddings(document_id);\nCREATE INDEX IF NOT EXISTS idx_favour_embeddings_file          ON favour_embeddings(file_name);\nCREATE INDEX IF NOT EXISTS idx_favour_escalations_customer     ON favour_escalations(customer_id);\nCREATE INDEX IF NOT EXISTS idx_favour_conversations_customer   ON favour_conversations(customer_id);\nCREATE INDEX IF NOT EXISTS idx_favour_customers_wa_id          ON favour_customers(wa_id);\nCREATE INDEX IF NOT EXISTS idx_favour_customers_code           ON favour_customers(customer_code);\n\n-- Weekly Summary View (live rolling 7-day window)\nCREATE VIEW favour_weekly_summary AS\nSELECT\n  (SELECT COUNT(DISTINCT id) \n   FROM table_1\n   column_1 CURRENT_DATE)           AS total_engaged,\n\n  (SELECT COUNT(*) FROM table_1\n   column_1= CURRENT_DATE - interval '7 days'\n   column_1 CURRENT_DATE)             AS new_joiners,\n\n  (SELECT COUNT(*) FROM table_2\n   column_2 'user'\n   column_3= CURRENT_DATE - interval '7 days'\n   column_3 CURRENT_DATE\n   AND (\n     content ILIKE '%thank%' OR content ILIKE '%thanks%' OR\n     content ILIKE '%appreciate%' OR content ILIKE '%helpful%' OR\n     content ILIKE '%great%' OR content ILIKE '%perfect%' OR\n     content ILIKE '%excellent%' OR content ILIKE '%wonderful%' OR\n     content ILIKE '%awesome%' OR content ILIKE '%noted%'\n   ))                                            AS codes_redeemed,\n\n  (SELECT COUNT(*) FROM table_2\n   column_2 'user'\n   column_3= CURRENT_DATE - interval '7 days'\n   column_3 CURRENT_DATE\n   AND content NOT ILIKE '%thank%'\n   AND content NOT ILIKE '%thanks%'\n   AND content NOT ILIKE '%appreciate%'\n   AND content NOT ILIKE '%helpful%'\n   AND content NOT ILIKE '%great%'\n   AND content NOT ILIKE '%perfect%'\n   AND content NOT ILIKE '%excellent%'\n   AND content NOT ILIKE '%wonderful%'\n   AND content NOT ILIKE '%awesome%'\n   AND content NOT ILIKE '%noted%'\n   AND content NOT ILIKE '%hi%'\n   AND content NOT ILIKE '%hello%'\n   AND content NOT ILIKE '%hey%'\n   AND content NOT ILIKE '%good morning%'\n   AND content NOT ILIKE '%good afternoon%'\n   AND content NOT ILIKE '%good evening%')       AS complaints_queries;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        -704
+      ],
+      "id": "__NODE_1__",
+      "name": "Creation/Parent DB",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "bot-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        384,
+        -432
+      ],
+      "id": "__NODE_2__",
+      "name": "Serve Upload Page",
+      "webhookId": "__WEBHOOK_1__"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Favour \u2014 Knowledge Upload</title>\n<style>\n  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n  :root {\n    --bg: #0f0f0f; --surface: #1a1a1a; --border: #2a2a2a;\n    --border-focus: #f97316; --accent: #f97316; --accent-dim: rgba(249,115,22,0.12);\n    --text: #f5f5f5; --text-muted: #888;\n    --success-bg: #0f2a1a; --success-border: #16a34a; --success-text: #4ade80;\n    --error-bg: #2a0f0f; --error-border: #dc2626; --error-text: #f87171;\n    --radius: 10px; --font: 'Inter', system-ui, sans-serif;\n  }\n  @import url('[URL]');\n  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }\n  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 480px; padding: 2.5rem 2rem; }\n  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 2rem; }\n  .brand-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }\n  .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }\n  h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.3; }\n  .subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 2rem; line-height: 1.6; }\n  .field { margin-bottom: 1.25rem; }\n  label { display: block; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.02em; }\n  select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 14px; padding: 11px 14px; appearance: none; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='[URL]' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; transition: border-color 0.15s; }\n  select:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-dim); }\n  select option { background: #1a1a1a; }\n  .drop-zone { border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }\n  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }\n  .drop-zone input[type=\"file\"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }\n  .drop-icon { width: 36px; height: 36px; margin: 0 auto 10px; background: var(--accent-dim); border-radius: 8px; display: flex; align-items: center; justify-content: center; }\n  .drop-icon svg { color: var(--accent); }\n  .drop-label { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }\n  .drop-hint { font-size: 12px; color: var(--text-muted); }\n  .file-selected { display: none; align-items: center; gap: 10px; background: var(--accent-dim); border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px 14px; margin-top: 10px; }\n  .file-selected.show { display: flex; }\n  .file-selected-name { font-size: 13px; font-weight: 500; color: var(--accent); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n  .file-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0; line-height: 1; flex-shrink: 0; }\n  .file-remove:hover { color: var(--error-text); }\n  .submit-btn { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-family: var(--font); font-size: 14px; font-weight: 600; padding: 13px; cursor: pointer; margin-top: 1.5rem; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }\n  .submit-btn:hover:not(:disabled) { opacity: 0.88; }\n  .submit-btn:active:not(:disabled) { transform: scale(0.98); }\n  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }\n  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }\n  .submit-btn.loading .spinner { display: block; }\n  .submit-btn.loading .btn-text { opacity: 0.7; }\n  @keyframes spin { to { transform: rotate(360deg); } }\n  .alert { display: none; border-radius: var(--radius); padding: 12px 14px; font-size: 13px; margin-top: 1rem; line-height: 1.5; }\n  .alert.show { display: block; }\n  .alert.success { background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success-text); }\n  .alert.error { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }\n  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0 1.25rem; }\n  .footer-note { font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }\n</style>\n</head>\n<body>\n<div class=\"card\">\n  <div class=\"brand\"><div class=\"brand-dot\"></div><span class=\"brand-name\">Favour Agent</span></div>\n  <h1>Upload knowledge document</h1>\n  <p class=\"subtitle\">Upload a PDF to update table_3 agent's knowledge base. The old version of this document type will be replaced automatically.</p>\n  <div class=\"field\">\n    <label for=\"docType\">Document type</label>\n    <select id=\"docType\" required>\n      <option value=\"\" disabled selected>Select a document type</option>\n      <option value=\"a\">Product List & Prices</option>\n      <option value=\"b\">Wholesaler PC Promp</option>\n      <option value=\"c\">Wholesaler Pharma Promo</option>\n      <option value=\"d\">Promo Guide</option>\n    </select>\n  </div>\n  <div class=\"field\">\n    <label>PDF file</label>\n    <div class=\"drop-zone\" id=\"dropZone\">\n      <input type=\"file\" id=\"fileInput\" accept=\".pdf\" />\n      <div class=\"drop-icon\"><svg width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12\"/></svg></div>\n      <div class=\"drop-label\">Drop PDF here or click to browse</div>\n      <div class=\"drop-hint\">PDF files only \u00b7 max 20MB</div>\n    </div>\n    <div class=\"file-selected\" id=\"fileSelected\">\n      <svg width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z\"/><polyline points=\"14 2 14 8 20 8\"/></svg>\n      <span class=\"file-selected-name\" id=\"fileSelectedName\"></span>\n      <button class=\"file-remove\" id=\"fileRemove\" type=\"button\">x</button>\n    </div>\n  </div>\n  <button class=\"submit-btn\" id=\"submitBtn\" disabled>\n    <div class=\"spinner\"></div>\n    <span class=\"btn-text\">Upload document</span>\n  </button>\n  <div class=\"alert\" id=\"alertBox\"></div>\n  <hr class=\"divider\">\n  <p class=\"footer-note\">Uploading replaces any existing document of the same type. The agent will use the new version immediately after processing.</p>\n</div>\n<script>\n  const dropZone = document.getElementById('dropZone');\n  const fileInput = document.getElementById('fileInput');\n  const fileSelected = document.getElementById('fileSelected');\n  const fileSelectedName = document.getElementById('fileSelectedName');\n  const fileRemove = document.getElementById('fileRemove');\n  const submitBtn = document.getElementById('submitBtn');\n  const docType = document.getElementById('docType');\n  const alertBox = document.getElementById('alertBox');\n  let selectedFile = null;\n  function checkReady() { submitBtn.disabled = !(selectedFile && docType.value); }\n  function setFile(file) {\n    if (!file) return;\n    if (file.type !== 'application/pdf') { showAlert('error', 'Only PDF files are supported.'); return; }\n    if (file.size > 20 * 1024 * 1024) { showAlert('error', 'File is too large. Maximum size is 20MB.'); return; }\n    selectedFile = file; fileSelectedName.textContent = file.name;\n    fileSelected.classList.add('show'); alertBox.classList.remove('show'); checkReady();\n  }\n  function clearFile() { selectedFile = null; fileInput.value = ''; fileSelected.classList.remove('show'); checkReady(); }\n  fileInput.addEventListener('change', e => setFile(e.target.files[0]));\n  fileRemove.addEventListener('click', clearFile);\n  docType.addEventListener('change', checkReady);\n  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });\n  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));\n  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); setFile(e.dataTransfer.files[0]); });\n  function showAlert(type, message) { alertBox.className = 'alert show ' + type; alertBox.textContent = message; }\n  submitBtn.addEventListener('click', async () => {\n    if (!selectedFile || !docType.value) return;\n    submitBtn.disabled = true; submitBtn.classList.add('loading'); alertBox.classList.remove('show');\n    const safeFileName = 'type_' + docType.value + '_' + selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');\n    const formData = new FormData();\n    formData.append('file', selectedFile, safeFileName);\n    formData.append('doc_type', docType.value);\n    formData.append('original_name', selectedFile.name);\n    try {\n      const res = await fetch('/webhook/bot-ingest-upload', { method: 'POST', body: formData });\n      if (res.ok) { showAlert('success', 'Document uploaded successfully. The agent will start processing it now.'); clearFile(); docType.value = ''; }\n      else { const txt = await res.text(); showAlert('error', 'Upload failed: ' + (txt || res.statusText)); }\n    } catch (err) { showAlert('error', 'Network error - please check your connection and try again.'); }\n    submitBtn.classList.remove('loading'); checkReady();\n  });\n</script>\n</body>\n</html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        -432
+      ],
+      "id": "__NODE_3__",
+      "name": "Return HTML Page"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bot-ingest-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        384,
+        -32
+      ],
+      "id": "__NODE_4__",
+      "name": "Receive File Upload",
+      "webhookId": "__WEBHOOK_2__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst docType = body.doc_type || 'unknown';\nconst originalName = body.original_name || 'document.pdf';\n\n// The file arrives as binary data\nconst binaryData = $input.first().binary;\nconst binaryKey = Object.keys(binaryData || {})[0];\n\nif (!binaryKey) throw new Error('No file received in upload');\n\nconst fileInfo = binaryData[binaryKey];\nconst mimeType = fileInfo.mimeType || 'application/pdf';\n\nif (!mimeType.includes('pdf')) {\n  throw new Error('Only PDF files are supported. Received: ' + mimeType);\n}\n\n// Build a clean filename: type_a_filename.pdf\nconst safeOriginal = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');\nconst fileName = 'type_' + docType + '_' + safeOriginal;\n\nreturn [{\n  json: { docType, originalName, fileName, mimeType },\n  binary: { data: fileInfo }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -32
+      ],
+      "id": "__NODE_5__",
+      "name": "Parse Upload"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=[URL] $json.fileName }}",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        -32
+      ],
+      "id": "__NODE_6__",
+      "name": "Upload to MinIO"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"message\": \"File uploaded and ingestion started\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        992,
+        -160
+      ],
+      "id": "__NODE_7__",
+      "name": "Respond OK to Browser"
+    },
+    {
+      "parameters": {
+        "url": "=[URL] $('Parse Upload').first().json.fileName }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        96
+      ],
+      "id": "__NODE_8__",
+      "name": "Download File from table_4"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "__NODE_9__",
+      "name": "Extract PDF Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "const extracted = $input.first().json;\nconst fileName = $('Parse Upload').first().json.fileName;\nconst docType = $('Parse Upload').first().json.docType;\n\nconst rawText = extracted.text || extracted.data || '';\n\nif (!rawText || rawText.trim().length === 0) {\n  throw new Error('No text extracted from table_5: ' + fileName);\n}\n\nconst CHUNK_SIZE = 800;\nconst OVERLAP = 150;\n\nconst chunks = [];\nlet start = 0;\nlet chunkIndex = 0;\n\nwhile (start < rawText.length) {\n  const end = Math.min(start + CHUNK_SIZE, rawText.length);\n  const chunk = rawText.slice(start, end).trim();\n  if (chunk.length > 50) {\n    chunks.push({\n      json: {\n        fileName,\n        docType,\n        chunkIndex,\n        content: chunk,\n        totalChunks: 0\n      }\n    });\n    chunkIndex++;\n  }\n  start += CHUNK_SIZE - OVERLAP;\n}\n\nchunks.forEach(c => { c.json.totalChunks = chunks.length; });\n\nif (chunks.length === 0) throw new Error('No chunks generated from: ' + fileName);\n\nreturn chunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        96
+      ],
+      "id": "__NODE_10__",
+      "name": "Chunk Text"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_6 (file_name, bucket, ingested_at, chunk_count)\nVALUES ($1, 'favors-rag', now(), $2)\nON CONFLICT (file_name)\nDO UPDATE column_4 now(),\n  chunk_count = EXCLUDED.chunk_count\nRETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$('Parse Upload').first().json.fileName, $('Chunk Text').first().json.totalChunks] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1584,
+        -32
+      ],
+      "id": "__NODE_11__",
+      "name": "Upsert Document Record",
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM table_7 column_5 $1",
+        "options": {
+          "queryReplacement": "={{ [$('Parse Upload').first().json.fileName] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1584,
+        208
+      ],
+      "id": "__NODE_12__",
+      "name": "Delete Old Embeddings",
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const documentId = $('Upsert Document Record').first().json.id;\nconst chunks = $('Chunk Text').all();\n\nreturn chunks.map(chunk => ({\n  json: {\n    ...chunk.json,\n    document_id: documentId\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        96
+      ],
+      "id": "__NODE_13__",
+      "name": "Attach Document ID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"models/gemini-embedding-001\",\n  \"content\": {\n    \"parts\": [{ \"text\": $json.content }]\n  }\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1984,
+        96
+      ],
+      "id": "__NODE_14__",
+      "name": "Generate Embedding",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const embeddingResponse = $input.first().json;\nconst embedding = embeddingResponse.embedding?.values;\n\nif (!embedding || !Array.isArray(embedding)) {\n  throw new Error('No embedding returned from table_8: ' + JSON.stringify(embeddingResponse));\n}\n\nconst chunkData = $('Attach Document ID').first().json;\n\nreturn [{\n  json: {\n    document_id: chunkData.document_id,\n    file_name: chunkData.fileName,\n    chunk_index: chunkData.chunkIndex,\n    content: chunkData.content,\n    embedding: '[' + embedding.join(',') + ']'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        96
+      ],
+      "id": "__NODE_15__",
+      "name": "Format Embedding"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_7 (document_id, file_name, chunk_index, content, embedding)\nVALUES ($1::uuid, $2, $3, $4, $5::vector)",
+        "options": {
+          "queryReplacement": "={{ [$json.document_id, $json.file_name, $json.chunk_index, $json.content, $json.embedding] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2384,
+        96
+      ],
+      "id": "__NODE_16__",
+      "name": "Save Embedding",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM table_1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        768,
+        -688
+      ],
+      "id": "__NODE_17__",
+      "name": "Random runs",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bot-wa-events",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        816
+      ],
+      "id": "__NODE_18__",
+      "name": "WA Webhook",
+      "webhookId": "__WEBHOOK_3__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst data = body.data || {};\nconst key  = data.key  || {};\n\nif (body.event !== 'messages.upsert') return [];\nif (key.fromMe) return [];\nif (key.remoteJid === 'status@broadcast') return [];\nif (key.remoteJid?.endsWith('@g.us')) return [];\nif (key.remoteJid?.endsWith('@newsletter')) return [];\n\nconst msg = data.message || {};\nif (msg.stickerMessage && !msg.conversation && !msg.extendedTextMessage) return [];\n\nconst chat_id    = key.remoteJid;\nconst sender_id  = key.remoteJid;\nconst first_name = data.pushName || 'Customer';\n\nconst text =\n  msg.conversation ||\n  msg.extendedTextMessage?.text ||\n  '';\n\nconst message_type = (msg.conversation || msg.extendedTextMessage) ? 'text' : 'unknown';\n\nif (message_type === 'unknown') return [];\n\nreturn [{ json: {\n  chat_id,\n  sender_id,\n  first_name,\n  text,\n  message_type,\n  message_id: key.id,\n  wa_instance: body.instance || 'favour',\n  raw_message: msg\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        816
+      ],
+      "id": "__NODE_19__",
+      "name": "Parse WA Message"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  id,\n  customer_code,\n  display_name,\n  message_count,\n  first_seen_at\nFROM table_1\ncolumn_6 $1\nLIMIT 1",
+        "options": {
+          "queryReplacement": "={{ [$('Parse WA Message').first().json.chat_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        736,
+        816
+      ],
+      "id": "__NODE_20__",
+      "name": "Lookup Customer",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "is-new-customer",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        816
+      ],
+      "id": "__NODE_21__",
+      "name": "Is New Customer?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_1 (wa_id, display_name, message_count, first_seen_at, last_seen_at)\nVALUES ($1, $2, 1, now(), now())\nRETURNING id, customer_code, display_name, message_count, first_seen_at",
+        "options": {
+          "queryReplacement": "={{ [$('Parse WA Message').first().json.chat_id, $('Parse WA Message').first().json.first_name] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1136,
+        656
+      ],
+      "id": "__NODE_22__",
+      "name": "Create Customer",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE table_1\ncolumn_7 now(), message_count = message_count + 1\ncolumn_6 $1\nRETURNING id, customer_code, display_name, message_count, first_seen_at",
+        "options": {
+          "queryReplacement": "={{ [$('Parse WA Message').first().json.chat_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1136,
+        976
+      ],
+      "id": "__NODE_23__",
+      "name": "Update table_9",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge customer data from table_10 Create or Update table_11\nlet customer;\ntry { customer = $('Create Customer').first().json; } catch(e) {}\nif (!customer || !customer.id) {\n  try { customer = $('Update table_9').first().json; } catch(e) {}\n}\nif (!customer || !customer.id) {\n  try { customer = $('Lookup Customer').first().json; } catch(e) {}\n}\n\nconst parseData = $('Parse WA Message').first().json;\nconst isNewCustomer = !$('Lookup Customer').first().json?.id;\n\nreturn [{ json: {\n  customer_id:   customer.id,\n  customer_code: customer.customer_code,\n  display_name:  customer.display_name || parseData.first_name,\n  message_count: customer.message_count,\n  is_new:        isNewCustomer,\n  chat_id:       parseData.chat_id,\n  wa_instance:   parseData.wa_instance,\n  text:          parseData.text,\n  first_name:    parseData.first_name\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        816
+      ],
+      "id": "__NODE_24__",
+      "name": "Merge Customer Data"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_12 (customer_id, started_at, last_msg_at)\nVALUES ($1::uuid, now(), now())\nON CONFLICT DO NOTHING\nRETURNING id AS conversation_id;\n\n-- Upsert: get existing open conversation or create new\nWITH upsert AS (\n  INSERT INTO table_12 (customer_id, started_at, last_msg_at)\n  SELECT $1::uuid, now(), now()\n  WHERE NOT EXISTS (\n    SELECT 1 FROM table_12\n    column_8 $1::uuid\n    column_9 now() - interval '2 hours'\n  )\n  RETURNING id\n)\nSELECT id AS conversation_id FROM table_13\nUNION ALL\nSELECT id AS conversation_id FROM table_12\ncolumn_8 $1::uuid\n  column_9 now() - interval '2 hours'\nORDER BY conversation_id DESC\nLIMIT 1",
+        "options": {
+          "queryReplacement": "={{ [$('Merge Customer Data').first().json.customer_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        816
+      ],
+      "id": "__NODE_25__",
+      "name": "Upsert Conversation",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role, content FROM table_2\ncolumn_10 $1::uuid\nORDER BY created_at DESC\nLIMIT 8",
+        "options": {
+          "queryReplacement": "={{ [$('Upsert Conversation').first().json.conversation_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1744,
+        816
+      ],
+      "id": "__NODE_26__",
+      "name": "Load Memory",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"models/gemini-embedding-001\", \"content\": { \"parts\": [{ \"text\": $('Merge Customer Data').first().json.text }] } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2000,
+        832
+      ],
+      "id": "__NODE_27__",
+      "name": "Embed Query",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT content, chunk_index, file_name,\n  1 - (embedding <=> $1::vector) AS similarity\nFROM table_7\nORDER BY embedding <=> $1::vector\nLIMIT 5",
+        "options": {
+          "queryReplacement": "={{ ['[' + $json.embedding.values.join(',') + ']'] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2224,
+        832
+      ],
+      "id": "__NODE_28__",
+      "name": "RAG Lookup",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const customerData  = $('Merge Customer Data').first().json;\nconst memoryItems   = $('Load Memory').all();\nconst ragItems      = $('RAG Lookup').all();\nconst isNew         = customerData.is_new;\n \nconst memoryMessages = memoryItems\n  .map(i => i.json)\n  .filter(m => m.role && m.content)\n  .reverse()\n  .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));\n \nconst ragContext = ragItems\n  .map(i => i.json)\n  .filter(r => r.similarity > 0.3)\n  .map(r => r.content)\n  .join('\\n\\n---\\n\\n');\n \nconst systemPrompt = `You are Favour, Orange Group's Digital Promoter assistant on WhatsApp.\nYour role is strictly to handle trade promotion enquiries for Orange Group products.\n \nCUSTOMER INFO:\n- Name: ${customerData.display_name}\n- Promo Code: ${customerData.customer_code}\n- First time customer: ${isNew}\n \nBEHAVIOUR RULES:\n1. Be formal but warm. Always in English.\n2. On first contact ONLY: introduce yourself as \"Hi, I'm Favour, your Orange Group Digital Promoter \ud83d\ude0a\\nYour promo code is ${customerData.customer_code}.\\nKindly show this code to our promoter to collect your gift.\" \u2014 nothing else, no question, no offer to help.\n3. For returning customers: respond directly without re-introducing yourself.\n4. Only answer questions related to Orange Group trade promotions, products, pricing, and promos.\n5. If asked anything outside this scope, politely say: \"I'm only able to assist with Orange Group trade promotion enquiries. For other questions, please contact our team directly.\"\n6. NEVER make up information. Only use the context provided below.\n7. If you detect a complaint, order request, or payment dispute \u2014 end your response with the exact tag: [ESCALATE]\n8. Keep responses concise and clear.\n \nKNOWLEDGE BASE CONTEXT:\n${ragContext || 'No specific context found. Provide a general helpful response within scope.'}`;\n \nreturn [{ json: {\n  systemPrompt,\n  memoryMessages,\n  customerData,\n  ragContext,\n  isNew\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        832
+      ],
+      "id": "__NODE_29__",
+      "name": "Build Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (function() {\n  const promptData = $json;\n  const userText = $('Merge Customer Data').first().json.text;\n\n  const messages = [\n    { role: 'system', content: promptData.systemPrompt },\n    ...promptData.memoryMessages,\n    { role: 'user', content: userText }\n  ];\n\n  return {\n    model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n    messages,\n    max_tokens: 1024,\n    temperature: 0.3\n  };\n})() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2624,
+        832
+      ],
+      "id": "__NODE_30__",
+      "name": "Call LLM",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const llmResponse = $input.first().json;\nconst rawReply = llmResponse.choices?.[0]?.message?.content || '';\n\nconst customerData   = $('Merge Customer Data').first().json;\nconst conversationId = $('Upsert Conversation').first().json.conversation_id;\n\nconst shouldEscalate = rawReply.includes('[ESCALATE]');\n\nconst positiveClosings = ['thank', 'thanks', 'thank you', 'ok thank', 'alright thank', 'noted thank', 'great thank', 'perfect'];\nconst userMsgLower = customerData.text.toLowerCase().trim();\nconst shouldSendCommunity = positiveClosings.some(w => userMsgLower.includes(w));\n\nconst cleanReply = rawReply\n  .replace('[ESCALATE]', '')\n  .replace('[SEND_COMMUNITY_LINK]', '')\n  .trim();\n\nconst positiveWords = ['thank', 'thanks', 'thank you', 'appreciate', 'helpful', 'great', 'perfect', 'noted', 'excellent', 'wonderful', 'awesome'];\nconst isPositiveSentiment = positiveWords.some(w => userMsgLower.includes(w));\nconst skipLLMReply = shouldSendCommunity;\n\nreturn [{ json: {\n  raw_reply:             rawReply,\n  clean_reply:           cleanReply,\n  should_escalate:       shouldEscalate,\n  should_send_community: shouldSendCommunity,\n  is_positive_sentiment: isPositiveSentiment,\n  skip_llm_reply:        skipLLMReply,\n  customer_id:           customerData.customer_id,\n  customer_code:         customerData.customer_code,\n  display_name:          customerData.display_name,\n  chat_id:               customerData.chat_id,\n  wa_instance:           customerData.wa_instance,\n  conversation_id:       conversationId,\n  user_message:          customerData.text\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        832
+      ],
+      "id": "__NODE_31__",
+      "name": "Parse LLM Output"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_2 (conversation_id, customer_id, role, content, created_at)\nVALUES\n  ($1::uuid, $2::uuid, 'user',      $3, now()),\n  ($1::uuid, $2::uuid, 'assistant', $4, now());\n \nUPDATE table_1\ncolumn_11 positive_interactions + 1\ncolumn_12 $2::uuid\n  AND $5 = true;",
+        "options": {
+          "queryReplacement": "={{ [$json.conversation_id, $json.customer_id, $json.user_message, $json.clean_reply, $json.is_positive_sentiment] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3040,
+        832
+      ],
+      "id": "__NODE_32__",
+      "name": "Save Messages",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=[URL] $('Parse LLM Output').first().json.wa_instance }}",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"number\": $('Parse LLM Output').first().json.chat_id.replace('@s.whatsapp.net', ''),\n  \"text\": $('Parse LLM Output').first().json.clean_reply\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3680,
+        672
+      ],
+      "id": "__NODE_33__",
+      "name": "Send WA Reply",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "check-escalate",
+              "leftValue": "={{ $('Parse LLM Output').first().json.should_escalate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3856,
+        672
+      ],
+      "id": "__NODE_34__",
+      "name": "Should Escalate?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_14 (customer_id, conversation_id, reason, context, resolved, created_at)\nVALUES ($1::uuid, $2::uuid, $3, $4, false, now())\nRETURNING id",
+        "options": {
+          "queryReplacement": "={{ [\n  $('Parse LLM Output').first().json.customer_id,\n  $('Parse LLM Output').first().json.conversation_id,\n  'auto-detected',\n  $('Parse LLM Output').first().json.user_message\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4048,
+        528
+      ],
+      "id": "__NODE_35__",
+      "name": "Save Escalation",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "REDACTED_NUMERIC_ID",
+        "text": "=\ud83d\udea8 *Escalation Alert*\n\n*Customer:* {{ $('Parse LLM Output').first().json.display_name }}\n*Code:* {{ $('Parse LLM Output').first().json.customer_code }}\n*WA:* {{ $('Parse LLM Output').first().json.chat_id.replace('@s.whatsapp.net', '') }}\n*Escalation ID:* {{ $('Save Escalation').first().json.id }}\n\n*Customer message:*\n{{ $('Parse LLM Output').first().json.user_message }}\n\n*Agent reply:*\n{{ $('Parse LLM Output').first().json.clean_reply }}\n\n_Reply to this message to respond to the customer._",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4256,
+        528
+      ],
+      "id": "__NODE_36__",
+      "name": "Notify Admin Telegram",
+      "webhookId": "__WEBHOOK_4__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=[URL] $('Parse LLM Output').first().json.wa_instance }}",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"number\": $('Parse LLM Output').first().json.chat_id.replace('@s.whatsapp.net', ''),\n  \"text\": \"You are welcome \ud83e\udd17\\nFollow the MaketNG channel on WhatsApp for more promo updates:\\n[URL] save Favour's line for enquiries on Orange Group products and Promo deals.\"\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3696,
+        1024
+      ],
+      "id": "__NODE_37__",
+      "name": "Send Community Link",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $input.first().json.message || {};\n\n// Only process replies to messages\nif (!msg.reply_to_message) return [];\n\nconst adminText    = msg.text || '';\nconst adminChatId  = msg.chat?.id;\nconst replyToText  = msg.reply_to_message?.text || '';\n\n// Extract escalation ID from table_3 original notification text\n// Format: *Escalation ID:* <uuid>\nconst escalationMatch = replyToText.match(/Escalation ID:\\*?\\s*([a-f0-9-]{36})/i);\nif (!escalationMatch) return [];\n\nconst escalationId = escalationMatch[1];\n\n// Extract customer WA number from table_15\n// Format: *WA:* 2348XXXXXXXXX\nconst waMatch = replyToText.match(/WA:\\*?\\s*(\\d+)/i);\nif (!waMatch) return [];\n\nconst waNumber = waMatch[1];\n\n// Extract customer code\nconst codeMatch = replyToText.match(/Code:\\*?\\s*(DPT-\\d+)/i);\nconst customerCode = codeMatch ? codeMatch[1] : '';\n\nreturn [{ json: {\n  escalation_id: escalationId,\n  admin_reply:   adminText,\n  wa_number:     waNumber,\n  customer_code: customerCode,\n  admin_chat_id: adminChatId\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1584
+      ],
+      "id": "__NODE_38__",
+      "name": "Parse Admin Reply"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  e.id,\n  e.customer_id,\n  e.conversation_id,\n  e.context AS original_message,\n  c.wa_id,\n  c.customer_code\nFROM table_14 e\nJOIN table_1 c ON c.id = e.customer_id\nWHERE e.id = $1::uuid\nLIMIT 1",
+        "options": {
+          "queryReplacement": "={{ [$json.escalation_id] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        864,
+        1584
+      ],
+      "id": "__NODE_39__",
+      "name": "Fetch Escalation",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE table_14\ncolumn_13 true,\n  admin_response = $2,\n  resolved_at = now()\ncolumn_12 $1::uuid",
+        "options": {
+          "queryReplacement": "={{ [$('Fetch Escalation').first().json.id, $('Parse Admin Reply').first().json.admin_reply] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1072,
+        1584
+      ],
+      "id": "__NODE_40__",
+      "name": "Mark Escalation Resolved",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO table_2 (conversation_id, customer_id, role, content, created_at)\nVALUES ($1::uuid, $2::uuid, 'assistant', $3, now())",
+        "options": {
+          "queryReplacement": "={{ [\n  $('Fetch Escalation').first().json.conversation_id,\n  $('Fetch Escalation').first().json.customer_id,\n  $('Parse Admin Reply').first().json.admin_reply\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1264,
+        1584
+      ],
+      "id": "__NODE_41__",
+      "name": "Save Admin Reply to Memory",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "[URL]",
+        "authentication": "REDACTED",
+        "genericAuthType": "REDACTED",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"number\": $('Fetch Escalation').first().json.wa_id.replace('@s.whatsapp.net', ''),\n  \"text\": $('Parse Admin Reply').first().json.admin_reply\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1472,
+        1584
+      ],
+      "id": "__NODE_42__",
+      "name": "Send Reply to Customer",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "=8778390981",
+        "text": "=\u2705 Reply sent to *{{ $('Fetch Escalation').first().json.customer_code }}* on WhatsApp.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1664,
+        1584
+      ],
+      "id": "__NODE_43__",
+      "name": "Confirm to Admin",
+      "webhookId": "__WEBHOOK_5__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        1584
+      ],
+      "id": "__NODE_44__",
+      "name": "Telegram Trigger",
+      "webhookId": "__WEBHOOK_6__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## File Ingestion and Modification",
+        "height": 928,
+        "width": 2224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        -528
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_45__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Agent Logic",
+        "height": 768,
+        "width": 4052
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        320,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_46__",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "##Escallation",
+        "height": 448,
+        "width": 1664
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        1440
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_47__",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        2352
+      ],
+      "id": "__NODE_48__",
+      "name": "Daily 6PM Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  -- Total unique customers who messaged today\n  COUNT(DISTINCT customer_id) FILTER (\n    WHERE DATE(created_at AT TIME ZONE 'Africa/Lagos') = CURRENT_DATE\n    column_2 'user'\n  ) AS active_customers,\n\n  -- Positive sentiments today (user messages containing thank/thanks etc)\n  COUNT(*) FILTER (\n    WHERE DATE(created_at AT TIME ZONE 'Africa/Lagos') = CURRENT_DATE\n    column_2 'user'\n    AND (\n      content ILIKE '%thank%' OR content ILIKE '%thanks%' OR\n      content ILIKE '%appreciate%' OR content ILIKE '%helpful%' OR\n      content ILIKE '%great%' OR content ILIKE '%perfect%' OR\n      content ILIKE '%excellent%' OR content ILIKE '%wonderful%' OR\n      content ILIKE '%awesome%' OR content ILIKE '%noted%'\n    )\n  ) AS positive_sentiments,\n\n  -- Other messages (user messages that are NOT positive sentiment AND not a first greeting)\n  COUNT(*) FILTER (\n    WHERE DATE(created_at AT TIME ZONE 'Africa/Lagos') = CURRENT_DATE\n    column_2 'user'\n    AND content NOT ILIKE '%thank%'\n    AND content NOT ILIKE '%thanks%'\n    AND content NOT ILIKE '%appreciate%'\n    AND content NOT ILIKE '%helpful%'\n    AND content NOT ILIKE '%great%'\n    AND content NOT ILIKE '%perfect%'\n    AND content NOT ILIKE '%excellent%'\n    AND content NOT ILIKE '%wonderful%'\n    AND content NOT ILIKE '%awesome%'\n    AND content NOT ILIKE '%noted%'\n    AND content NOT ILIKE '%hi%'\n    AND content NOT ILIKE '%hello%'\n    AND content NOT ILIKE '%hey%'\n    AND content NOT ILIKE '%good morning%'\n    AND content NOT ILIKE '%good afternoon%'\n    AND content NOT ILIKE '%good evening%'\n  ) AS other_messages\n\nFROM table_2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        736,
+        2352
+      ],
+      "id": "__NODE_49__",
+      "name": "Get Message Stats",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) AS new_customers_today,\n  COALESCE(\n    string_agg(customer_code || ' (' || COALESCE(display_name, 'Unknown') || ')', ', ' ORDER BY first_seen_at),\n    'None'\n  ) AS new_customer_list\nFROM table_1\nWHERE DATE(first_seen_at AT TIME ZONE 'Africa/Lagos') = CURRENT_DATE",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        544,
+        2352
+      ],
+      "id": "__NODE_50__",
+      "name": "Get New Customers",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(DISTINCT id) AS total_customers_alltime\nFROM table_1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        976,
+        2352
+      ],
+      "id": "__NODE_51__",
+      "name": "Get Total Customers",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const msgStats    = $('Get Message Stats').first().json;\nconst newCusts    = $('Get New Customers').first().json;\nconst totalCusts  = $('Get Total Customers').first().json;\n\nconst today = new Date().toLocaleDateString('en-GB', {\n  timeZone: 'Africa/Lagos',\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\nconst report = [\n  `\ud83d\udcca <b>Favour Daily Report</b>`,\n  `\ud83d\udcc5 ${today}`,\n  ``,\n  `\ud83d\udc65 <b>Customers</b>`,\n  `\u2022 Total unique customers (all-time): ${totalCusts.total_customers_alltime || 0}`,\n  `\u2022 Active today: ${msgStats.active_customers || 0}`,\n  `\u2022 New today: ${newCusts.new_customers_today || 0}`,\n  ``,\n  `\ud83d\udcac <b>Message Breakdown</b>`,\n  `\u2022 Code Redeemed: ${msgStats.positive_sentiments || 0}`,\n  `\u2022 Other messages (queries, complaints etc): ${msgStats.other_messages || 0}`,\n].filter(line => line !== '').join('\\n');\n\nreturn [{ json: {\n  report,\n  stat_date:           new Date().toISOString().split('T')[0],\n  unique_customers:    parseInt(totalCusts.total_customers_alltime || 0),\n  active_customers:    parseInt(msgStats.active_customers || 0),\n  new_customers:       parseInt(newCusts.new_customers_today || 0),\n  positive_sentiments: parseInt(msgStats.positive_sentiments || 0)\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        2352
+      ],
+      "id": "__NODE_52__",
+      "name": "Build Report"
+    },
+    {
+      "parameters": {
+        "chatId": "REDACTED_NUMERIC_ID",
+        "text": "={{ $('Build Report').first().json.report }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        2352
+      ],
+      "id": "__NODE_53__",
+      "name": "Send Report to Telegram",
+      "webhookId": "__WEBHOOK_7__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Daily Report",
+        "height": 816,
+        "width": 1664
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        288,
+        2032
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_54__",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $('Parse LLM Output').first().json.skip_llm_reply }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3456,
+        832
+      ],
+      "id": "__NODE_55__",
+      "name": "Skip LLM Reply?"
+    },
+    {
+      "parameters": {
+        "path": "favour-weekly-report",
+        "authentication": "REDACTED",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        2656,
+        2304
+      ],
+      "id": "__NODE_56__",
+      "name": "Weekly Report Webhook",
+      "webhookId": "__WEBHOOK_8__",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__HTTP_HEADER_CRED_ID",
+          "name": "HTTP Header Auth Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM table_16",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2864,
+        2304
+      ],
+      "id": "__NODE_57__",
+      "name": "Query Weekly Summary",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"data\": $json, \"generated_at\": new Date().toISOString() } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3056,
+        2304
+      ],
+      "id": "__NODE_58__",
+      "name": "Return JSON Response"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3248,
+        832
+      ],
+      "id": "__NODE_59__",
+      "name": "Wait",
+      "webhookId": "__WEBHOOK_9__"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                3
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        2656,
+        2608
+      ],
+      "id": "__NODE_60__",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM table_16",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2864,
+        2608
+      ],
+      "id": "__NODE_61__",
+      "name": "Query Weekly Summary1",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "REDACTED_NUMERIC_ID",
+        "text": "=\ud83d\udcca *Favour Weekly Stats*\n\n\ud83d\udc65 Total Engaged: {{ $json.total_engaged }}\n\ud83c\udd95 New Joiners: {{ $json.new_joiners }}\n\ud83c\udfab Codes Redeemed: {{ $json.codes_redeemed }}\n\u26a0\ufe0f Complaints/Queries: {{ $json.complaints_queries }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3072,
+        2608
+      ],
+      "id": "__NODE_62__",
+      "name": "Send a text message",
+      "webhookId": "__WEBHOOK_10__",
+      "credentials": {
+        "telegramApi": {
+          "id": "__TELEGRAM_CRED_ID",
+          "name": "Telegram Credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Serve Upload Page": {
+      "main": [
+        [
+          {
+            "node": "Return HTML Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive File Upload": {
+      "main": [
+        [
+          {
+            "node": "Parse Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Upload": {
+      "main": [
+        [
+          {
+            "node": "Upload to MinIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to MinIO": {
+      "main": [
+        [
+          {
+            "node": "Respond OK to Browser",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download File from MinIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File from MinIO": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Text": {
+      "main": [
+        [
+          {
+            "node": "Upsert Document Record",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Delete Old Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Document Record": {
+      "main": [
+        [
+          {
+            "node": "Attach Document ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Old Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Attach Document ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Document ID": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Format Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Embedding": {
+      "main": [
+        [
+          {
+            "node": "Save Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Embedding": {
+      "main": [
+        []
+      ]
+    },
+    "WA Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse WA Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse WA Message": {
+      "main": [
+        [
+          {
+            "node": "Lookup Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Customer": {
+      "main": [
+        [
+          {
+            "node": "Is New Customer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Customer?": {
+      "main": [
+        [
+          {
+            "node": "Create Customer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Customer": {
+      "main": [
+        [
+          {
+            "node": "Merge Customer Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Customer": {
+      "main": [
+        [
+          {
+            "node": "Merge Customer Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Customer Data": {
+      "main": [
+        [
+          {
+            "node": "Upsert Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Conversation": {
+      "main": [
+        [
+          {
+            "node": "Load Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Memory": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "RAG Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Lookup": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call LLM": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM Output": {
+      "main": [
+        [
+          {
+            "node": "Save Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Messages": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WA Reply": {
+      "main": [
+        [
+          {
+            "node": "Should Escalate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Escalate?": {
+      "main": [
+        [
+          {
+            "node": "Save Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Escalation": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Admin Reply": {
+      "main": [
+        [
+          {
+            "node": "Fetch Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Escalation": {
+      "main": [
+        [
+          {
+            "node": "Mark Escalation Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Escalation Resolved": {
+      "main": [
+        [
+          {
+            "node": "Save Admin Reply to Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Admin Reply to Memory": {
+      "main": [
+        [
+          {
+            "node": "Send Reply to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply to Customer": {
+      "main": [
+        [
+          {
+            "node": "Confirm to Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Admin Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 6PM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get New Customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Message Stats": {
+      "main": [
+        [
+          {
+            "node": "Get Total Customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get New Customers": {
+      "main": [
+        [
+          {
+            "node": "Get Message Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Total Customers": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report": {
+      "main": [
+        [
+          {
+            "node": "Send Report to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip LLM Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send WA Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Community Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Report Webhook": {
+      "main": [
+        [
+          {
+            "node": "Query Weekly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Weekly Summary": {
+      "main": [
+        [
+          {
+            "node": "Return JSON Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Skip LLM Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Weekly Summary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Weekly Summary1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v0",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "saveManualExecutions": false
+  },
+  "staticData": {
+    "node:Daily 6PM Trigger": {
+      "recurrenceRules": []
+    },
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "WA Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "orangegroupsai.online",
+            "user-agent": "axios/1.13.2",
+            "content-length": "1338",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.19.0.1",
+            "x-forwarded-host": "orangegroupsai.online",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "e10704efd721",
+            "x-real-ip": "172.19.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "messages.upsert",
+            "instance": "favour",
+            "data": {
+              "key": {
+                "remoteJid": "[EMAIL]",
+                "remoteJidAlt": "[EMAIL]",
+                "fromMe": false,
+                "id": "3A705277AAF97D24B2F1",
+                "participant": "",
+                "addressingMode": "lid"
+              },
+              "pushName": "Adekunle Adebiyi",
+              "status": "DELIVERY_ACK",
+              "message": {
+                "conversation": "Thanks",
+                "messageContextInfo": {
+                  "threadId": [],
+                  "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderTimestamp": {
+                      "low": 1781509963,
+                      "high": 0,
+                      "unsigned": true
+                    },
+                    "recipientKeyHash": {
+                      "0": 24,
+                      "1": 32,
+                      "2": 127,
+                      "3": 180,
+                      "4": 70,
+                      "5": 3,
+                      "6": 240,
+                      "7": 30,
+                      "8": 81,
+                      "9": 55
+                    },
+                    "recipientTimestamp": {
+                      "low": 1781259777,
+                      "high": 0,
+                      "unsigned": true
+                    }
+                  },
+                  "deviceListMetadataVersion": 2,
+                  "messageSecret": "REDACTED"
+                }
+              },
+              "messageType": "conversation",
+              "messageTimestamp": 1781522532,
+              "instanceId": "REDACTED_OPAQUE_TOKEN",
+              "source": "ios"
+            },
+            "destination": "[URL]",
+            "date_time": "2026-06-15T08:22:12.095Z",
+            "sender": "[EMAIL]",
+            "server_url": "[URL]",
+            "apikey": "REDACTED"
+          },
+          "webhookUrl": "REDACTED",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "__VERSION_ID__",
+  "activeVersionId": "b0ac6bc8-5b51-4aa1-903c-4323078d98cb",
+  "versionCounter": 564,
+  "triggerCount": 7,
+  "shared": [
+    {
+      "updatedAt": "2026-06-12T10:56:20.844Z",
+      "createdAt": "2026-06-12T10:56:20.844Z",
+      "role": "workflow:owner",
+      "workflowId": "vjCfvXXGGvsbk7cx",
+      "projectId": "ir6dYbaAlha8WGmA",
+      "project": {
+        "updatedAt": "2026-01-30T11:59:38.451Z",
+        "createdAt": "2026-01-30T11:25:24.975Z",
+        "id": "ir6dYbaAlha8WGmA",
+        "name": "Orange orangegroups.ai@gmail.com <orangegroups.ai@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "d6320d31-a534-40f1-9f67-e1a589e8f288"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  },
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-06-26T13:55:21.418615+00:00",
+    "original_name": "Favour - Digital Trade Promotion Agent",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "favour_customers": "table_1",
+      "favour_messages": "table_2",
+      "the": "table_3",
+      "MinIO": "table_4",
+      "PDF": "table_5",
+      "favour_documents": "table_6",
+      "favour_embeddings": "table_7",
+      "Gemini": "table_8",
+      "Customer": "table_9",
+      "either": "table_10",
+      "path": "table_11",
+      "favour_conversations": "table_12",
+      "upsert": "table_13",
+      "favour_escalations": "table_14",
+      "notification": "table_15",
+      "favour_weekly_summary": "table_16"
+    },
+    "columns_renamed": {
+      "first_seen_at": "column_1",
+      "role": "column_2",
+      "created_at": "column_3",
+      "ingested_at": "column_4",
+      "file_name": "column_5",
+      "wa_id": "column_6",
+      "last_seen_at": "column_7",
+      "customer_id": "column_8",
+      "last_msg_at": "column_9",
+      "conversation_id": "column_10",
+      "positive_interactions": "column_11",
+      "id": "column_12",
+      "resolved": "column_13"
+    }
+  }
+}

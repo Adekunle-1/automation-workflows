@@ -1,0 +1,674 @@
+{
+  "updatedAt": "2026-06-19T16:31:34.684Z",
+  "createdAt": "2026-04-01T09:06:33.098Z",
+  "id": "__WORKFLOW_ID__",
+  "name": "Winnifred - Stock Auditor Agent",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "\u2705 Action Required: Initiate Audit",
+        "html": "<h2>Audit </h2>\n<p>The auditor run is ready. Please review the log and upload the NAV report to google sheet.</p>\n<p>\ud83d\udcca <a href=\"[URL]\">Open the sheet</a></p>\n<p>Once you've reviewed, click below to release the emails:</p>\n<a href=\"[URL]\" style=\"background:#27ae60;color:white;padding:14px 28px;text-decoration:none;border-radius:6px;font-size:16px;font-weight:bold;\">\u2705 Confirm & Send Emails</a>\n<p style=\"color:#999;font-size:13px;margin-top:20px;\">Audit will not start until you click the button above.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        -640
+      ],
+      "id": "__NODE_1__",
+      "name": "Send Approval Email",
+      "webhookId": "__WEBHOOK_1__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "auditor-task",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        -192
+      ],
+      "id": "__NODE_2__",
+      "name": "Webhook",
+      "webhookId": "__WEBHOOK_2__",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "triggerAtHour": 14
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        -640
+      ],
+      "id": "__NODE_3__",
+      "name": "Email trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let link = item.json.BinCardLink;\n\n  if (!link || link === \"No link provided\") {\n    return { json: { ...item.json, validImage: false } };\n  }\n\n  // Extract file ID\n  const match = link.match(/id=([^&]+)/);\n  const fileId = match ? match[1] : null;\n\n  if (!fileId) {\n    return { json: { ...item.json, validImage: false } };\n  }\n\n  const directUrl = `[URL]\n\n  return {\n    json: {\n      ...item.json,\n      validImage: true,\n      directImageUrl: directUrl\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -352
+      ],
+      "id": "__NODE_4__",
+      "name": "Prepare Image URL"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const link = item.json.BinCardLink;\n\n  return {\n    json: {\n      ...item.json,\n      hasImage: link && link !== \"No link provided\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -352
+      ],
+      "id": "__NODE_5__",
+      "name": "Tag entries with images"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.hasImage }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        -352
+      ],
+      "id": "__NODE_6__",
+      "name": "Image exists?"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.directImageUrl}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        -352
+      ],
+      "id": "__NODE_7__",
+      "name": "Download  image"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "ODL - Daily Stock Count (Responses)",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 370232067,
+          "mode": "list",
+          "cachedResultName": "Nav Report",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        464,
+        -64
+      ],
+      "id": "__NODE_8__",
+      "name": "NAV Report",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "ODL - Daily Stock Count (Responses)",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 245606522,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        464,
+        -352
+      ],
+      "id": "__NODE_9__",
+      "name": "Daily Stock Report",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst outputItems = [];\n\nfor (const item of items) {\n  const row = item.json;\n  const productDescription = row[\"Description\"];\n  \n  if (!productDescription) continue;\n  \n  const warehouseRegex = /^(ODL|D-ODL)\\d{3}[A-Z]?$/;\n  \n  for (const [columnName, value] of Object.entries(row)) {\n    if (warehouseRegex.test(columnName)) {\n      if (value !== \"\" && value !== null && value !== undefined) {\n        const quantity = Number(value);\n        if (!isNaN(quantity) && quantity > 0) {\n          outputItems.push({\n            json: {\n              SKUName:      productDescription,\n              WarehouseCode: columnName,\n              NAVQuantity:  quantity,\n              mergeKey:     `${columnName}__${productDescription}`\n            }\n          });\n        }\n      }\n    }\n  }\n}\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -64
+      ],
+      "id": "__NODE_10__",
+      "name": "Extract stock count on NAV"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the LAST filled row from table_1 stock card image.\n\nReturn ONLY a single-line JSON object with these exact keys (omit any key not found):\n{\n  \"brand\": \"string\",\n  \"date\": \"string\",\n  \"balance\": \"string or number\",\n  \"description\": \"string\",\n  \"invoice_no\": \"string\",\n  \"quantity_received\": \"string or number\",\n  \"quantity_issued\": \"string or number\"\n}\n\nWarehouseName: {{ $('Extract Today\\'s Logs').item.json.WarehouseCode }}\nSKUName: {{ $('Extract Today\\'s Logs').item.json.SKUName }}\n\nNo markdown, no backticks, no explanation. JSON only.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1760,
+        -352
+      ],
+      "id": "__NODE_11__",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        -176
+      ],
+      "id": "__NODE_12__",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "__GROQ_CRED_ID",
+          "name": "Groq API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\nconst todayStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;\n\nconst allItems = $input.all();\n\nconst todayItems = allItems.filter(item => {\n  const ts = item.json.Timestamp;\n  return ts && ts.split(' ')[0] === todayStr;\n});\n\n// Deduplicate by mergeKey \u2014 last submission wins\nconst seen = {};\nfor (const item of todayItems) {\n  const key = `${item.json['Warehouse Number/Name']}__${item.json['S.K.U Name']}`;\n  seen[key] = item; // overwrites earlier, so last wins\n}\n\nreturn Object.values(seen).map(item => ({\n  json: {\n    WarehouseCode: item.json['Warehouse Number/Name'],\n    SKUName: item.json['S.K.U Name'].toUpperCase().trim(),\n    QuantityCounted: Number(item.json['Quantity Counted']) || 0,\n    BinCardLink: item.json['Upload picture of Bin Card'] || null,\n    mergeKey: `${item.json['Warehouse Number/Name']}__${item.json['S.K.U Name'].toUpperCase().trim()}`\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -352
+      ],
+      "id": "__NODE_13__",
+      "name": "Extract Today's Logs"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let balance = null;\n  let binCardStatus = 'PARSE FAILED';\n\n  try {\n    const raw = item.json.output;\n    const cleaned = raw.replace(/```json|```/g, '').trim();\n    const parsed = JSON.parse(cleaned);\n    balance = parsed.balance !== undefined ? Number(parsed.balance) : null;\n    binCardStatus = balance !== null ? 'OK' : 'BALANCE NOT FOUND';\n  } catch(e) {\n    balance = null;\n    binCardStatus = 'PARSE FAILED';\n  }\n\n  return {\n    json: {\n      mergeKey:       item.json.mergeKey,\n      BinCardBalance: balance,\n      BinCardStatus:  binCardStatus\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        -352
+      ],
+      "id": "__NODE_14__",
+      "name": "Parse Bin Card Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const physical = item.json.QuantityCounted ?? null;\n  const bincard  = item.json.BinCardBalance ?? null;\n  const nav      = item.json.NAVQuantity ?? null;\n  const binCardStatus = item.json.BinCardStatus ?? 'NO BINCARD UPLOADED';\n\n  const diff = (a, b) => (a !== null && b !== null) ? a - b : null;\n\n  // Boolean comparisons\n  const physicalVsBinCard = binCardStatus === 'NO BINCARD UPLOADED'\n    ? 'Bin Card Not Recorded'\n    : (physical !== null && bincard !== null ? physical === bincard : false);\n\n  const physicalVsNAV = (physical !== null && nav !== null)\n    ? physical === nav\n    : false;\n\n  const binCardVsNAV = binCardStatus === 'NO BINCARD UPLOADED'\n    ? 'Bin Card Not Recorded'\n    : (bincard !== null && nav !== null ? bincard === nav : false);\n\n  // Overall status\n  let overallStatus;\n  const noBinCard = binCardStatus === 'NO BINCARD UPLOADED';\n  const physMatchesBin = physicalVsBinCard === true;\n  const physMatchesNav = physicalVsNAV === true;\n  const binMatchesNav  = binCardVsNAV === true;\n\n  if (physMatchesBin && physMatchesNav && binMatchesNav) {\n    overallStatus = 'Fully Balanced';\n\n  } else if (noBinCard && physMatchesNav) {\n    overallStatus = 'Partial Balance - Bin Card Not Recorded';\n\n  } else if (noBinCard && !physMatchesNav) {\n    overallStatus = 'Total Mismatch - Bin Card Not Recorded ';\n\n  } else if (physMatchesBin && !physMatchesNav) {\n    overallStatus = 'Partial Balance - NAV Record Not Matched';\n\n  } else if (physMatchesNav && !physMatchesBin) {\n    overallStatus = 'Partial Balance - Bin Card Not Matched';\n\n  } else if (binMatchesNav && !physMatchesBin) {\n    overallStatus = 'Partial Balance - Physical Count Not Matched';\n\n  } else {\n    overallStatus = 'Total Mismatch';\n  }\n\n  return {\n    json: {\n      Date:                     new Date().toLocaleDateString('en-US'),\n      WarehouseCode:            item.json.WarehouseCode,\n      SKUName:                  item.json.SKUName,\n      PhysicalCount:            physical,\n      BinCardBalance:           bincard,\n      BinCardStatus:            binCardStatus,\n      NAVQuantity:              nav,\n      Diff_Physical_vs_BinCard: diff(physical, bincard),\n      Diff_Physical_vs_NAV:     diff(physical, nav),\n      Diff_BinCard_vs_NAV:      diff(bincard, nav),\n      Physical_vs_BinCard:      physicalVsBinCard,\n      Physical_vs_NAV:          physicalVsNAV,\n      BinCard_vs_NAV:           binCardVsNAV,\n      Overall_Status:           overallStatus\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        -176
+      ],
+      "id": "__NODE_15__",
+      "name": "Compare & Flag Node"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "ODL - Daily Stock Count (Responses)",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 547291300,
+          "mode": "list",
+          "cachedResultName": "AI Reconciliation",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3088,
+        -464
+      ],
+      "id": "__NODE_16__",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "mergeKey",
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2704,
+        -176
+      ],
+      "id": "__NODE_17__",
+      "name": "Merge All+ NAV"
+    },
+    {
+      "parameters": {
+        "jsCode": "// All physical entries - the anchor\nconst physicalItems = $('Extract Today\\'s Logs').all();\n\n// Only the entries that had images (same order AI Agent processed them)\nconst imageItems = $('Tag entries with images').all().filter(i => i.json.hasImage);\n\n// Current input = Parse Bin Card Response output (one per image, same order)\nconst binCardItems = $input.all();\n\n// Build mergeKey \u2192 BinCardBalance map using index alignment\nconst binCardMap = {};\nimageItems.forEach((imgItem, index) => {\n  const key = imgItem.json.mergeKey;\n  const bc = binCardItems[index];\n  if (key && bc) {\n    binCardMap[key] = {\n      BinCardBalance: bc.json.BinCardBalance ?? null,\n      BinCardStatus:  bc.json.BinCardStatus ?? 'PARSE FAILED'\n    };\n  }\n});\n\n// Join every physical entry with its bin card result\nreturn physicalItems.map(item => {\n  const key = item.json.mergeKey;\n  const bc = binCardMap[key];\n\n  return {\n    json: {\n      WarehouseCode:   item.json.WarehouseCode,\n      SKUName:         item.json.SKUName,\n      QuantityCounted: item.json.QuantityCounted,\n      mergeKey:        key,\n      BinCardBalance:  bc ? bc.BinCardBalance : null,\n      BinCardStatus:   bc ? bc.BinCardStatus : 'NO BINCARD UPLOADED'\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        -352
+      ],
+      "id": "__NODE_18__",
+      "name": "Merge Physical + Bin Card"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json);\n\nconst date = new Date().toLocaleDateString('en-US', { \n  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' \n});\n\nconst discrepancies = items.filter(i => i.Overall_Status !== 'Fully Balanced');\nconst balanced = items.filter(i => i.Overall_Status === 'Fully Balanced');\n\nconst statusColor = (status) => {\n  if (status === 'Total Mismatch') return '#c0392b';\n  return '#e67e22';\n};\n\nconst thStyle = `background:#2c2c2c;color:#fff;padding:8px 12px;text-align:left;`;\nconst tdStyle = `padding:8px 12px;border-bottom:1px solid #e0e0e0;`;\n\nconst buildDiscrepancyRows = (rows) => rows.map((r, i) => `\n  <tr style=\"${i % 2 === 1 ? 'background:#f9f9f9;' : ''}\">\n    <td style=\"${tdStyle}\">${r.WarehouseCode}</td>\n    <td style=\"${tdStyle}\">${r.SKUName}</td>\n    <td style=\"${tdStyle}\">${r.PhysicalCount ?? 'N/A'}</td>\n    <td style=\"${tdStyle}\">${r.BinCardBalance ?? 'Not Recorded'}</td>\n    <td style=\"${tdStyle}\">${r.NAVQuantity ?? 'Not Found'}</td>\n    <td style=\"${tdStyle};color:${statusColor(r.Overall_Status)};font-weight:bold;\">${r.Overall_Status}</td>\n  </tr>\n`).join('');\n\nconst buildBalancedRows = (rows) => rows.map((r, i) => `\n  <tr style=\"${i % 2 === 1 ? 'background:#f9f9f9;' : ''}\">\n    <td style=\"${tdStyle}\">${r.WarehouseCode}</td>\n    <td style=\"${tdStyle}\">${r.SKUName}</td>\n    <td style=\"${tdStyle}\">${r.PhysicalCount ?? 'N/A'}</td>\n    <td style=\"${tdStyle}\">${r.BinCardBalance ?? 'N/A'}</td>\n    <td style=\"${tdStyle}\">${r.NAVQuantity ?? 'N/A'}</td>\n  </tr>\n`).join('');\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family:Arial,sans-serif;color:#333;max-width:960px;margin:0 auto;padding:24px;\">\n\n  <h2 style=\"border-bottom:2px solid #333;padding-bottom:8px;\">\ud83d\udce6 Daily Stock Audit Report</h2>\n  <p style=\"color:#555;margin-top:0;\">${date}</p>\n\n  <div style=\"background:#f0f0f0;border-radius:4px;padding:12px 16px;margin-bottom:24px;font-size:14px;\">\n    <strong>Total Audited:</strong> ${items.length} &nbsp;|&nbsp;\n    <strong style=\"color:#27ae60;\">Fully Balanced:</strong> ${balanced.length} &nbsp;|&nbsp;\n    <strong style=\"color:#c0392b;\">Requiring Attention:</strong> ${discrepancies.length}\n  </div>\n\n  ${discrepancies.length === 0 \n    ? '<p style=\"color:#27ae60;font-size:15px;\">\u2705 All items are fully balanced today. No action required.</p>'\n    : `\n  <h3 style=\"color:#c0392b;margin-bottom:8px;\">\u26a0\ufe0f Items Requiring Attention</h3>\n  <table style=\"width:100%;border-collapse:collapse;font-size:13px;margin-bottom:36px;\">\n    <thead>\n      <tr>\n        <th style=\"${thStyle}\">Warehouse</th>\n        <th style=\"${thStyle}\">SKU</th>\n        <th style=\"${thStyle}\">Physical Count</th>\n        <th style=\"${thStyle}\">Bin Card Balance</th>\n        <th style=\"${thStyle}\">NAV Count</th>\n        <th style=\"${thStyle}\">Status</th>\n      </tr>\n    </thead>\n    <tbody>${buildDiscrepancyRows(discrepancies)}</tbody>\n  </table>`\n  }\n\n  ${balanced.length > 0 ? `\n  <h3 style=\"color:#27ae60;margin-bottom:8px;\">\u2705 Fully Balanced</h3>\n  <table style=\"width:100%;border-collapse:collapse;font-size:13px;margin-bottom:36px;\">\n    <thead>\n      <tr>\n        <th style=\"${thStyle}\">Warehouse</th>\n        <th style=\"${thStyle}\">SKU</th>\n        <th style=\"${thStyle}\">Physical Count</th>\n        <th style=\"${thStyle}\">Bin Card Balance</th>\n        <th style=\"${thStyle}\">NAV Count</th>\n      </tr>\n    </thead>\n    <tbody>${buildBalancedRows(balanced)}</tbody>\n  </table>` : ''}\n\n  <p style=\"font-size:12px;color:#999;border-top:1px solid #eee;padding-top:12px;margin-top:32px;\">\n    This report was generated automatically by the ODL Stock Audit System.\n  </p>\n\n</body>\n</html>\n`;\n\nreturn [{ json: { emailBody: html, date } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3088,
+        80
+      ],
+      "id": "__NODE_19__",
+      "name": "Generate Email Body"
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "={{ 'Daily Stock Audit Report \u2014 ' + $json.date }}",
+        "html": "={{ $json.emailBody }}",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "[EMAIL], [EMAIL], [EMAIL], [EMAIL]"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3312,
+        80
+      ],
+      "id": "__NODE_20__",
+      "name": "Send an Email",
+      "webhookId": "__WEBHOOK_3__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Email trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Daily Stock Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "NAV Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image URL": {
+      "main": [
+        [
+          {
+            "node": "Download  image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag entries with images": {
+      "main": [
+        [
+          {
+            "node": "Image exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image exists?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download  image": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Stock Report": {
+      "main": [
+        [
+          {
+            "node": "Extract Today's Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NAV Report": {
+      "main": [
+        [
+          {
+            "node": "Extract stock count on NAV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Today's Logs": {
+      "main": [
+        [
+          {
+            "node": "Tag entries with images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Bin Card Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Bin Card Response": {
+      "main": [
+        [
+          {
+            "node": "Merge Physical + Bin Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract stock count on NAV": {
+      "main": [
+        [
+          {
+            "node": "Merge All+ NAV",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Compare & Flag Node": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Email Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All+ NAV": {
+      "main": [
+        [
+          {
+            "node": "Compare & Flag Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Physical + Bin Card": {
+      "main": [
+        [
+          {
+            "node": "Merge All+ NAV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email Body": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Email trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "__VERSION_ID__",
+  "activeVersionId": "900eb245-489b-4a9e-9de1-dde0c3154cb4",
+  "versionCounter": 663,
+  "triggerCount": 2,
+  "shared": [
+    {
+      "updatedAt": "2026-04-01T09:06:33.098Z",
+      "createdAt": "2026-04-01T09:06:33.098Z",
+      "role": "workflow:owner",
+      "workflowId": "wk9UP6yaDi4tE7hG",
+      "projectId": "ir6dYbaAlha8WGmA",
+      "project": {
+        "updatedAt": "2026-01-30T11:59:38.451Z",
+        "createdAt": "2026-01-30T11:25:24.975Z",
+        "id": "ir6dYbaAlha8WGmA",
+        "name": "Orange orangegroups.ai@gmail.com <orangegroups.ai@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "d6320d31-a534-40f1-9f67-e1a589e8f288"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": "Version 900eb245",
+    "description": ""
+  },
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-06-26T13:55:22.101034+00:00",
+    "original_name": "Winnifred - Stock Auditor Agent",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "this": "table_1"
+    },
+    "columns_renamed": {}
+  }
+}
