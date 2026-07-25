@@ -1,0 +1,3250 @@
+{
+  "name": "OKL Procurement Approval Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1201447339,
+          "mode": "list"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "__NODE_1__",
+      "name": "Trigger Main Form",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        144
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "oklrequests",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "__NODE_2__",
+      "name": "Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        448
+      ],
+      "webhookId": "__WEBHOOK_1__"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.query.decision}}",
+              "operation": "regex",
+              "value2": "^(approved|rejected)$"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "__NODE_3__",
+      "name": "If Valid Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        160,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $('Decode Decision Link').item.json.decision }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "__NODE_4__",
+      "name": "If Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "=Purchase Request Approved: {{ $('Decode Decision Link').item.json.material }}",
+        "html": "=<p>The request below has been <strong style=\"color:#0a7f37;\">approved</strong>. Please proceed with the next steps.</p><table style=\"border-collapse:collapse;width:100%\"><tr><td style=\"padding:6px;font-weight:bold;\">Requester</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.requesterName }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Department</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.dept }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Material / Part</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.material }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Specification</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.itemDetail }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Quantity</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.qty }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Unit Price</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.unitPrice }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Required Date</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.requirementDate }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Purpose</td><td style=\"padding:6px;\">{{ $('Decode Decision Link').item.json.purpose }}</td></tr></table>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "__NODE_5__",
+      "name": "Notify Next Person (Approved)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1904,
+        256
+      ],
+      "webhookId": "__WEBHOOK_2__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $('Decode Decision Link').item.json.requesterEmail }}",
+        "subject": "=Your Procurement Request Has Been Rejected: {{ $('Decode Decision Link').item.json.material }}",
+        "html": "=<p>Your request for {{ $('Decode Decision Link').item.json.material }} was rejected.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "__NODE_6__",
+      "name": "Notify Requester (Rejected)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1920,
+        544
+      ],
+      "webhookId": "__WEBHOOK_3__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Aggregate Batch Results').item.json.approvedList.length + ' approved, ' + $('Aggregate Batch Results').item.json.rejectedList.length + ' rejected.' }}",
+        "options": {}
+      },
+      "id": "__NODE_7__",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2768,
+        1904
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Invalid or expired decision link.",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "__NODE_8__",
+      "name": "Respond Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "team",
+              "value": "main",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "material",
+              "value": "={{ String($json['Name of Material / Part'] || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "requester",
+              "value": "={{ String($json['Email Address'] || $json.Email || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "requesterName",
+              "value": "={{ String($json.Name || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "reqTs",
+              "value": "={{ String($json.Timestamp || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "qty",
+              "value": "={{ String($json['Quantity (Number E.g 10)'] || $json.Quantity || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "dept",
+              "value": "={{ String($json.Department || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "approveUrl",
+              "value": "={{ '[URL]' + encodeURIComponent(JSON.stringify({\n  team: 'main',\n  rowNumber: $json.row_number,\n  requesterEmail: String($json['Email Address'] || $json.Email || '').trim(),\n  requesterName: String($json.Name || '').trim(),\n  dept: String($json.Department || '').trim(),\n  material: String($json['Name of Material / Part'] || '').trim(),\n  itemDetail: String($json['Item Detail (Specification & Brand)'] || '').trim(),\n  category: String($json['Purchase Category'] || '').trim(),\n  purpose: String($json.Purpose || '').trim(),\n  requirementDate: String($json['Requirement Date'] || '').trim(),\n  qty: String($json['Quantity (Number E.g 10)'] || $json.Quantity || '').trim(),\n  unitPrice: String($json['Unit Price'] || '').trim()\n})) }}",
+              "type": "string"
+            },
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "name": "rejectUrl",
+              "value": "={{ '[URL]' + encodeURIComponent(JSON.stringify({\n  team: 'main',\n  rowNumber: $json.row_number,\n  requesterEmail: String($json['Email Address'] || $json.Email || '').trim(),\n  material: String($json['Name of Material / Part'] || '').trim()\n})) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        144
+      ],
+      "id": "__NODE_9__",
+      "name": "Edit Fields (prod)"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1201447339,
+          "mode": "list",
+          "cachedResultName": "Form",
+          "cachedResultUrl": "[URL]"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Timestamp",
+              "lookupValue": "={{ $json.Timestamp }}"
+            },
+            {
+              "lookupColumn": "Name",
+              "lookupValue": "={{ $json.Name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        144,
+        144
+      ],
+      "id": "__NODE_10__",
+      "name": "Get Row Number (prod)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "=Approval Needed: {{ $json['Name of Material / Part'] }} \u2014 {{ $json.Department }}",
+        "html": "=<p>Hello,</p><p>A new procurement request from table_1 <strong>Production</strong> team requires your decision.</p><table style=\"border-collapse:collapse;width:100%\"><tr><td style=\"padding:6px;font-weight:bold;\">Requester</td><td style=\"padding:6px;\">{{ $json.Name }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Department</td><td style=\"padding:6px;\">{{ $json.Department }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Material / Part</td><td style=\"padding:6px;\">{{ $json['Name of Material / Part'] }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Specification</td><td style=\"padding:6px;\">{{ $json['Item Detail (Specification & Brand)'] }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Quantity</td><td style=\"padding:6px;\">{{ $json['Quantity (Number E.g 10)'] }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Unit Price</td><td style=\"padding:6px;\">{{ $json['Unit Price'] }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Required Date</td><td style=\"padding:6px;\">{{ $json['Requirement Date'] }}</td></tr><tr><td style=\"padding:6px;font-weight:bold;\">Purpose</td><td style=\"padding:6px;\">{{ $json.Purpose }}</td></tr></table><br/><p><a href=\"{{ $json.approveUrl }}\" style=\"padding:12px 20px;background:#0a7f37;color:#fff;text-decoration:none;border-radius:6px;margin-right:12px;\">Approve</a>&nbsp;&nbsp;<a href=\"{{ $json.rejectUrl }}\" style=\"padding:12px 20px;background:#c62828;color:#fff;text-decoration:none;border-radius:6px;\">Reject</a></p><p style=\"color:#888;font-size:12px;\">Main team</p>",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "[EMAIL], [EMAIL], [EMAIL]"
+        }
+      },
+      "id": "__NODE_11__",
+      "name": "Send Approval Email (prod)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        144
+      ],
+      "webhookId": "__WEBHOOK_4__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $json.query || {};\n\nif (!q.ctx) {\n  throw new Error('Missing ctx in decision link');\n}\n\nlet ctx;\ntry {\n  ctx = JSON.parse(decodeURIComponent(q.ctx));\n} catch (e) {\n  throw new Error('Invalid ctx payload');\n}\n\nconst decision = String(q.decision || '').toLowerCase();\nif (!['approved', 'rejected'].includes(decision)) {\n  throw new Error('Invalid decision');\n}\n\nconst rowNumber = Number(ctx.rowNumber);\nif (!rowNumber || isNaN(rowNumber)) {\n  throw new Error('Missing or invalid rowNumber in ctx');\n}\n\nreturn [{\n  json: {\n    decision,\n    team: String(ctx.team || ''),\n    rowNumber,\n    requesterEmail: String(ctx.requesterEmail || ''),\n    requesterName: String(ctx.requesterName || ''),\n    dept: String(ctx.dept || ''),\n    material: String(ctx.material || ''),\n    itemDetail: String(ctx.itemDetail || ''),\n    category: String(ctx.category || ''),\n    purpose: String(ctx.purpose || ''),\n    requirementDate: String(ctx.requirementDate || ''),\n    qty: String(ctx.qty || ''),\n    unitPrice: String(ctx.unitPrice || '')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        432
+      ],
+      "id": "__NODE_12__",
+      "name": "Decode Decision Link"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System Engineering",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.rowNumber }}",
+            "Request Status": "={{$json.decision === 'approved' ? 'Approved by OKL management' : 'Rejected by OKL management'}}",
+            "Management Remark": "={{$json.decision === 'approved' ? 'Accepted' : ($json.rejectionReason || 'Not provided')}}",
+            "Management Review (OKL)": "={{$json.decision === 'approved' ? 'Accepted' : 'Rejected'}}",
+            "Approval Date": "={{ new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos' }) }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Request Date",
+              "displayName": "Request Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requestor",
+              "displayName": "Requestor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Name of Material / Part",
+              "displayName": "Name of Material / Part",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Item Detail (Specification & Brand)",
+              "displayName": "Item Detail (Specification & Brand)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purchase Category",
+              "displayName": "Purchase Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requirement Date",
+              "displayName": "Requirement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Total Value",
+              "displayName": "Total Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review (OKL)",
+              "displayName": "Management Review (OKL)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Management Remark",
+              "displayName": "Management Remark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Approval Date",
+              "displayName": "Approval Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Term Of Payment",
+              "displayName": "Term Of Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review (ODL)",
+              "displayName": "Management Review (ODL)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RFP Number",
+              "displayName": "RFP Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 1 Amount",
+              "displayName": "Payment 1 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 2 Amount",
+              "displayName": "Payment 2 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Balance",
+              "displayName": "Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor Delivery",
+              "displayName": "Vendor Delivery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Request Status",
+              "displayName": "Request Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department Receival Status",
+              "displayName": "Department Receival Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Remarks",
+              "displayName": "Remarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        1936
+      ],
+      "id": "__NODE_13__",
+      "name": "Update table_2 in sheet (eng)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{$json.rowNumber}}",
+            "Management Review": "={{$json.decision === 'approved' ? 'Approved' : 'Rejected'}}",
+            "Management Remark": "={{'Decision captured via email link on ' + new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })}}",
+            "Request Status": "={{$json.decision === 'approved' ? 'Approved' : 'Rejected'}}",
+            "Remarks": "Decision recorded via automated approval workflow"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Request Date",
+              "displayName": "Request Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requestor",
+              "displayName": "Requestor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Name of Material / Part",
+              "displayName": "Name of Material / Part",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Item Detail (Specification & Brand)",
+              "displayName": "Item Detail (Specification & Brand)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purchase Category",
+              "displayName": "Purchase Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requirement Date",
+              "displayName": "Requirement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Total Value",
+              "displayName": "Total Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review",
+              "displayName": "Management Review",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Management Remark",
+              "displayName": "Management Remark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Term Of Payment",
+              "displayName": "Term Of Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review 2",
+              "displayName": "Management Review 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RFP Number",
+              "displayName": "RFP Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 1 Amount",
+              "displayName": "Payment 1 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 2 Amount",
+              "displayName": "Payment 2 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Balance",
+              "displayName": "Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor Delivery",
+              "displayName": "Vendor Delivery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Request Status",
+              "displayName": "Request Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department Receival Status",
+              "displayName": "Department Receival Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Remarks",
+              "displayName": "Remarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        416
+      ],
+      "id": "__NODE_14__",
+      "name": "Update table_2 in sheet (prod)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System Engineering",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        1936
+      ],
+      "id": "__NODE_15__",
+      "name": "Get All Purchase Rows (Eng)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        432
+      ],
+      "id": "__NODE_16__",
+      "name": "Get All Purchase Rows (Prod)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowNumber = $('Decode Decision Link').item.json.rowNumber;\nconst match = items.find(i => Number(i.json.row_number) === Number(rowNumber));\n\nif (!match) {\n  throw new Error('Row not found in Purchase sheet: ' + rowNumber);\n}\n\nconst currentStatus = String(match.json['Management Review'] || '').trim();\n\nreturn [{\n  json: {\n    ...$('Decode Decision Link').item.json,\n    alreadyDecided: currentStatus.length > 0,\n    currentStatus\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        432
+      ],
+      "id": "__NODE_17__",
+      "name": "Check If Decided (Prod)"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ 'This request was already ' + $json.currentStatus + ' by you. No further action taken.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1408,
+        752
+      ],
+      "id": "__NODE_18__",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.alreadyDecided }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        432
+      ],
+      "id": "__NODE_19__",
+      "name": "Already Decided? (Prod)"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineering-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        1440
+      ],
+      "id": "__NODE_20__",
+      "name": "Engineering Intake Webhook",
+      "webhookId": "__WEBHOOK_5__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || {};\nconst name = String(body.name || '').trim();\nconst requirementDate = String(body.requirementDate || '').trim();\nconst items = Array.isArray(body.items) ? body.items : [];\n\nif (!name) throw new Error('Missing requester name');\nif (!requirementDate) throw new Error('Missing requirement date');\nif (items.length === 0) throw new Error('At least one item is required');\n\n// Safer unique batch id: time + ms + random\nconst now = new Date();\nconst rand = Math.random().toString(36).slice(2, 8).toUpperCase();\nconst batchId =\n  'ENG-' +\n  now.getFullYear() +\n  String(now.getMonth() + 1).padStart(2, '0') +\n  String(now.getDate()).padStart(2, '0') + '-' +\n  String(now.getHours()).padStart(2, '0') +\n  String(now.getMinutes()).padStart(2, '0') +\n  String(now.getSeconds()).padStart(2, '0') + '-' +\n  String(now.getMilliseconds()).padStart(3, '0') + '-' +\n  rand;\n\nconst requestDate = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });\n\nreturn items.map((it, index) => {\n  const sku = String(it.sku || '').trim();\n  const itemDetail = String(it.itemDetail || '').trim();\n  const category = String(it.category || '').trim();\n  const purpose = String(it.purpose || '').trim();\n  const quantity = Number(it.quantity);\n  const unitPriceRaw = it.unitPrice;\n\n  if (!sku) throw new Error(`Item ${index + 1}: SKU is required`);\n  if (!itemDetail) throw new Error(`Item ${index + 1}: item detail is required`);\n  if (!category) throw new Error(`Item ${index + 1}: category is required`);\n  if (!purpose) throw new Error(`Item ${index + 1}: purpose is required`);\n  if (!Number.isFinite(quantity) || quantity <= 0) {\n    throw new Error(`Item ${index + 1}: quantity must be greater than zero`);\n  }\n\n  let unitPrice = '';\n  if (unitPriceRaw !== undefined && unitPriceRaw !== '') {\n    const parsed = Number(unitPriceRaw);\n    if (!Number.isFinite(parsed) || parsed < 0) {\n      throw new Error(`Item ${index + 1}: unit price must be zero or more`);\n    }\n    unitPrice = parsed;\n  }\n\n  return {\n    json: {\n      batchId,                 // for workflow usage\n      Remarks: batchId,        // for sheet echo-back lookup\n      'Request Date': requestDate,\n      'Requestor': name,\n      'Department': 'Engineering',\n      'Name of Material / Part': sku,\n      'Item Detail (Specification & Brand)': itemDetail,\n      'Purchase Category': category,\n      'Purpose': purpose,\n      'Requirement Date': requirementDate,\n      'Quantity': quantity,\n      'Unit Price': unitPrice,\n      'Total Value': unitPrice === '' ? '' : quantity * unitPrice\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        1440
+      ],
+      "id": "__NODE_21__",
+      "name": "Split Items (Eng Intake)"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System Engineering",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Request Date": "={{ $json[\"Request Date\"] }}",
+            "Requestor": "={{ $json.Requestor }}",
+            "Department": "={{ $json.Department }}",
+            "Name of Material / Part": "={{ $json[\"Name of Material / Part\"] }}",
+            "Item Detail (Specification & Brand)": "={{ $json[\"Item Detail (Specification & Brand)\"] }}",
+            "Purchase Category": "={{ $json[\"Purchase Category\"] }}",
+            "Purpose": "={{ $json.Purpose }}",
+            "Requirement Date": "={{ $json[\"Requirement Date\"] }}",
+            "Quantity": "={{ $json.Quantity }}",
+            "Unit Price": "={{ $json[\"Unit Price\"] }}",
+            "Total Value": "={{ $json[\"Total Value\"] }}",
+            "Remarks": "={{$json.Remarks}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Request Date",
+              "displayName": "Request Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Requestor",
+              "displayName": "Requestor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name of Material / Part",
+              "displayName": "Name of Material / Part",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item Detail (Specification & Brand)",
+              "displayName": "Item Detail (Specification & Brand)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purchase Category",
+              "displayName": "Purchase Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Requirement Date",
+              "displayName": "Requirement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Value",
+              "displayName": "Total Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Management Review",
+              "displayName": "Management Review",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Remark",
+              "displayName": "Management Remark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Term Of Payment",
+              "displayName": "Term Of Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review (ODL)",
+              "displayName": "Management Review (ODL)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RFP Number",
+              "displayName": "RFP Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 1 Amount",
+              "displayName": "Payment 1 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 2 Amount",
+              "displayName": "Payment 2 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Balance",
+              "displayName": "Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor Delivery",
+              "displayName": "Vendor Delivery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Request Status",
+              "displayName": "Request Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Department Receival Status",
+              "displayName": "Department Receival Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Remarks",
+              "displayName": "Remarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        304,
+        1440
+      ],
+      "id": "__NODE_22__",
+      "name": "Append to Purchase (Eng)",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "engineering-checklist",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        1728
+      ],
+      "id": "__NODE_23__",
+      "name": "Engineering Checklist Webhook",
+      "webhookId": "__WEBHOOK_6__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\n\nfunction escapeHtml(s) {\n  return String(s).replace(/[&<>\"']/g, c => ({\n    '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'\n  }[c]));\n}\n\nlet bodyHtml;\n\nif (data.error) {\n  bodyHtml = `\n    <div class=\"sheet\">\n      <div class=\"letterhead\"><h1>Checklist Unavailable</h1></div>\n      <p class=\"err-msg\">${escapeHtml(data.error)}</p>\n    </div>`;\n} else {\n  bodyHtml = `\n    <div class=\"sheet\">\n      <div class=\"letterhead\">\n        <h1>Review &amp; Decide</h1>\n        <span class=\"tag\">Engineering</span>\n      </div>\n      <div class=\"meta\">\n        Requester: <b>${escapeHtml(data.requesterName)}</b> &middot;\n        Requirement date: <b>${escapeHtml(data.requirementDate)}</b> &middot;\n        ${data.items.length} item(s)\n      </div>\n\n      <div class=\"bulk-row\">\n        <button type=\"button\" id=\"approveAll\">Approve All</button>\n        <button type=\"button\" id=\"rejectAll\">Reject All</button>\n      </div>\n\n      <table id=\"itemsTable\">\n        <thead><tr><th>Material</th><th>Detail</th><th>Purpose</th><th>Qty</th><th>Decision</th></tr></thead>\n        <tbody id=\"itemsBody\"></tbody>\n      </table>\n\n      <div class=\"reason-wrap\" id=\"reasonWrap\" style=\"display:none; margin-bottom:16px;\">\n        <label for=\"rejectionReason\" style=\"display:block; font-family:var(--mono); font-size:11px; margin-bottom:6px;\">\n          Rejection Reason (required if any item is rejected)\n        </label>\n        <textarea id=\"rejectionReason\" rows=\"3\" style=\"width:100%; padding:8px; border:1px solid #c9c2b2; background:#fff;\"></textarea>\n      </div>\n\n      <div class=\"submit-row\">\n        <span id=\"countNote\" class=\"count-note\"></span>\n        <button type=\"button\" id=\"submitBtn\" disabled>Submit Decisions</button>\n      </div>\n      <div class=\"status\" id=\"status\"></div>\n    </div>`;\n}\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Review & Decide - Engineering</title>\n<style>\n  :root {\n    --ink:#1c2321; --paper:#f6f4ee; --line:#c9c2b2; --line-strong:#1c2321;\n    --brass:#8a6d3b; --brass-deep:#6b5228; --danger:#a3382f; --ok:#3d6b4c;\n    --mono:'JetBrains Mono','SF Mono',Consolas,monospace; --sans:'Inter',-apple-system,sans-serif;\n    --serif:'Source Serif 4',Georgia,serif;\n  }\n  * { box-sizing: border-box; }\n  body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); padding:40px 20px 80px; }\n  .sheet { max-width:780px; margin:0 auto; }\n  .letterhead { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px double var(--line-strong); padding-bottom:14px; margin-bottom:16px; }\n  .letterhead h1 { font-family:var(--serif); font-size:26px; margin:0; }\n  .tag { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--brass-deep); border:1px solid var(--brass-deep); padding:4px 8px; }\n  .meta { font-family:var(--mono); font-size:12px; color:#6b665a; margin-bottom:24px; }\n  .bulk-row { display:flex; gap:12px; margin-bottom:20px; }\n  .bulk-row button { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:1px; background:transparent; border:1.5px solid var(--brass-deep); color:var(--brass-deep); padding:8px 14px; cursor:pointer; }\n  table { width:100%; border-collapse:collapse; margin-bottom:24px; }\n  th { text-align:left; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#6b665a; border-bottom:1.5px solid var(--line-strong); padding:8px 6px; }\n  td { padding:12px 6px; border-bottom:1px solid var(--line); font-size:14px; }\n  .decision-cell label { font-family:var(--mono); font-size:12px; margin-right:14px; cursor:pointer; }\n  tr.approved { background:rgba(61,107,76,0.06); }\n  tr.rejected { background:rgba(163,56,47,0.06); }\n  .submit-row { display:flex; justify-content:space-between; align-items:center; border-top:3px double var(--line-strong); padding-top:20px; }\n  .count-note { font-family:var(--mono); font-size:12px; color:#6b665a; }\n  #submitBtn { background:var(--ink); color:var(--paper); border:none; font-family:var(--mono); font-size:13px; letter-spacing:1.5px; text-transform:uppercase; padding:14px 28px; cursor:pointer; }\n  #submitBtn:disabled { background:#a19c8e; cursor:not-allowed; }\n  .status { margin-top:20px; padding:14px 16px; font-family:var(--mono); font-size:13px; display:none; }\n  .status.show { display:block; }\n  .status.ok { background:rgba(61,107,76,0.1); border-left:3px solid var(--ok); color:var(--ok); }\n  .status.err { background:rgba(163,56,47,0.1); border-left:3px solid var(--danger); color:var(--danger); }\n  .err-msg { font-family:var(--mono); font-size:14px; color:var(--danger); }\n</style>\n</head>\n<body>\n${bodyHtml}\n<script>\n  window.__BATCH_ID__ = ${JSON.stringify(data.batchId || '')};\n  window.__ITEMS__ = ${JSON.stringify(data.items || []).replace(/</g, '\\\\u003c')};\n  window.__REQUESTER_EMAIL__ = ${JSON.stringify(data.requesterEmail || '')};\n  window.__REQUESTER_NAME__ = ${JSON.stringify(data.requesterName || '')};\n</script>\n<script>\n(function() {\n  if (!window.__ITEMS__ || !window.__ITEMS__.length) return;\n\n  const DECISION_URL = '[URL]';\n  const items = window.__ITEMS__;\n  const tbody = document.getElementById('itemsBody');\n  const submitBtn = document.getElementById('submitBtn');\n  const countNote = document.getElementById('countNote');\n  const statusBox = document.getElementById('status');\n  const reasonWrap = document.getElementById('reasonWrap');\n  const reasonEl = document.getElementById('rejectionReason');\n\n  function updateCount() {\n    const decided = items.filter(it => it._decision).length;\n    const rejected = items.filter(it => it._decision === 'rejected').length;\n    countNote.textContent = decided + ' of ' + items.length + ' decided';\n    submitBtn.disabled = decided < items.length;\n    if (reasonWrap) reasonWrap.style.display = rejected > 0 ? 'block' : 'none';\n  }\n\n  items.forEach((it, idx) => {\n    const tr = document.createElement('tr');\n    tr.dataset.idx = idx;\n\n    ['material','detail','purpose','qty'].forEach(k => {\n      const td = document.createElement('td');\n      td.textContent = it[k];\n      tr.appendChild(td);\n    });\n\n    const tdDecision = document.createElement('td');\n    tdDecision.className = 'decision-cell';\n\n    ['approved','rejected'].forEach(val => {\n      const label = document.createElement('label');\n      const radio = document.createElement('input');\n      radio.type = 'radio';\n      radio.name = 'decision_' + idx;\n      radio.value = val;\n      radio.addEventListener('change', () => {\n        it._decision = val;\n        tr.className = val;\n        updateCount();\n      });\n      label.appendChild(radio);\n      label.appendChild(document.createTextNode(val === 'approved' ? 'Approve' : 'Reject'));\n      tdDecision.appendChild(label);\n    });\n\n    tr.appendChild(tdDecision);\n    tbody.appendChild(tr);\n  });\n\n  document.getElementById('approveAll').addEventListener('click', () => setAll('approved'));\n  document.getElementById('rejectAll').addEventListener('click', () => setAll('rejected'));\n\n  function setAll(val) {\n    items.forEach((it, idx) => {\n      it._decision = val;\n      const tr = tbody.querySelector('tr[data-idx=\"' + idx + '\"]');\n      tr.className = val;\n      const radio = tr.querySelector('input[value=\"' + val + '\"]');\n      if (radio) radio.checked = true;\n    });\n    updateCount();\n  }\n\n  updateCount();\n\n  submitBtn.addEventListener('click', async () => {\n    statusBox.className = 'status';\n    submitBtn.disabled = true;\n    submitBtn.textContent = 'Submitting...';\n\n    const decisions = items.map(it => ({\n      rowNumber: it.rowNumber,\n      material: it.material,\n      detail: it.detail,\n      purpose: it.purpose,\n      qty: it.qty,\n      decision: it._decision\n    }));\n\n    const rejectedCount = decisions.filter(d => d.decision === 'rejected').length;\n    const rejectionReason = reasonEl ? String(reasonEl.value || '').trim() : '';\n\n    if (rejectedCount > 0 && !rejectionReason) {\n      statusBox.className = 'status show err';\n      statusBox.textContent = 'Please provide one rejection reason.';\n      submitBtn.disabled = false;\n      submitBtn.textContent = 'Submit Decisions';\n      return;\n    }\n\n    try {\n      const res = await fetch(DECISION_URL, {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({\n          batchId: window.__BATCH_ID__,\n          requesterEmail: window.__REQUESTER_EMAIL__,\n          requesterName: window.__REQUESTER_NAME__,\n          rejectionReason,\n          decisions\n        })\n      });\n\n      if (!res.ok) throw new Error('Server responded ' + res.status);\n\n      statusBox.className = 'status show ok';\n      statusBox.textContent = await res.text();\n      submitBtn.textContent = 'Submitted';\n    } catch (err) {\n      statusBox.className = 'status show err';\n      statusBox.textContent = 'Submission failed: ' + err.message;\n      submitBtn.disabled = false;\n      submitBtn.textContent = 'Submit Decisions';\n    }\n  });\n})();\n</script>\n</body>\n</html>`;\n\nreturn [{ json: { html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        1728
+      ],
+      "id": "__NODE_24__",
+      "name": "Render Checklist Page"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        736,
+        1728
+      ],
+      "id": "__NODE_25__",
+      "name": "Respond With Checklist HTML"
+    },
+    {
+      "parameters": {
+        "path": "oklengineeringrequisition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -112,
+        1184
+      ],
+      "id": "__NODE_26__",
+      "name": "Engineering Requisition Form Webhook",
+      "webhookId": "__WEBHOOK_7__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const skuPayload = $('Normalize SKU Catalog').item.json || {};\nconst skuCatalog = Array.isArray(skuPayload.catalog) ? skuPayload.catalog : [];\nconst skuByKey = skuPayload.bySku || {};\n\nconst html = `\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Material Requisition - Engineering Department</title>\n<style>\n  :root {\n    --ink: #1c2321; --paper: #f6f4ee; --line: #c9c2b2; --line-strong: #1c2321;\n    --brass: #8a6d3b; --brass-deep: #6b5228; --danger: #a3382f; --ok: #3d6b4c;\n    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;\n    --serif: 'Source Serif 4', Georgia, serif;\n    --sans: 'Inter', -apple-system, sans-serif;\n  }\n  * { box-sizing: border-box; }\n  body {\n    margin: 0; background: var(--paper);\n    background-image: linear-gradient(var(--line) 1px, transparent 1px);\n    background-size: 100% 42px; color: var(--ink); font-family: var(--sans);\n    padding: 40px 20px 80px;\n  }\n  .sheet { max-width: 860px; margin: 0 auto; background: var(--paper); }\n  .letterhead {\n    display: flex; justify-content: space-between; align-items: flex-end;\n    border-bottom: 3px double var(--line-strong); padding-bottom: 14px; margin-bottom: 6px;\n  }\n  .letterhead h1 { font-family: var(--serif); font-size: 26px; font-weight: 600; margin: 0; }\n  .letterhead .tag {\n    font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;\n    color: var(--brass-deep); border: 1px solid var(--brass-deep); padding: 4px 8px; white-space: nowrap;\n  }\n  .form-no { font-family: var(--mono); font-size: 12px; color: #6b665a; margin-bottom: 32px; }\n  fieldset { border: none; padding: 0; margin: 0 0 32px; }\n  legend {\n    font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px;\n    color: var(--brass-deep); padding: 0 0 10px; width: 100%; border-bottom: 1px solid var(--line); margin-bottom: 18px;\n  }\n  .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }\n  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }\n  @media (max-width: 700px) { .row2, .row3 { grid-template-columns: 1fr; } }\n\n  label {\n    display: block; font-family: var(--mono); font-size: 10px; text-transform: uppercase;\n    letter-spacing: 1px; color: #6b665a; margin-bottom: 4px;\n  }\n  input, select, textarea {\n    width: 100%; background: transparent; border: none; border-bottom: 1.5px solid var(--line);\n    padding: 6px 2px 8px; font-family: var(--sans); font-size: 15px; color: var(--ink);\n    margin-bottom: 18px; transition: border-color 0.15s;\n  }\n  textarea { border: 1.5px solid var(--line); padding: 8px; }\n  input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: var(--brass); }\n  .readonly-note { font-size: 11px; color: #6b665a; margin-top: -12px; margin-bottom: 14px; font-family: var(--mono); }\n\n  .sku-feedback {\n    font-size: 11px; font-family: var(--mono); margin-top: -14px; margin-bottom: 14px; min-height: 14px;\n  }\n  .sku-feedback.err { color: var(--danger); }\n  .sku-feedback .suggest-link { text-decoration: underline; cursor: pointer; font-weight: 600; }\n\n  .item-card {\n    border: 1.5px solid var(--line-strong); padding: 18px 20px 4px; margin-bottom: 18px;\n    position: relative; background: #fdfcf9;\n  }\n  .item-index {\n    position: absolute; top: -12px; left: 16px; background: var(--ink); color: var(--paper);\n    font-family: var(--mono); font-size: 11px; padding: 2px 9px; letter-spacing: 1px;\n  }\n  .remove-item {\n    position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--danger);\n    font-family: var(--mono); font-size: 11px; letter-spacing: 0.5px; cursor: pointer;\n    text-decoration: underline; padding: 4px;\n  }\n  .remove-item:hover { opacity: 0.7; }\n\n  .add-item {\n    width: 100%; background: transparent; border: 1.5px dashed var(--brass-deep); color: var(--brass-deep);\n    font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;\n    padding: 14px; cursor: pointer; margin-bottom: 32px; transition: background 0.15s;\n  }\n  .add-item:hover { background: rgba(138,109,59,0.08); }\n\n  .submit-row {\n    display: flex; justify-content: space-between; align-items: center;\n    border-top: 3px double var(--line-strong); padding-top: 20px;\n  }\n  .count-note { font-family: var(--mono); font-size: 12px; color: #6b665a; }\n  button[type=\"submit\"] {\n    background: var(--ink); color: var(--paper); border: none; font-family: var(--mono);\n    font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; padding: 14px 28px; cursor: pointer;\n    transition: background 0.15s;\n  }\n  button[type=\"submit\"]:hover { background: var(--brass-deep); }\n  button[type=\"submit\"]:disabled { background: #a19c8e; cursor: wait; }\n\n  .status { margin-top: 20px; padding: 14px 16px; font-family: var(--mono); font-size: 13px; display: none; }\n  .status.show { display: block; }\n  .status.ok { background: rgba(61,107,76,0.1); border-left: 3px solid var(--ok); color: var(--ok); }\n  .status.err { background: rgba(163,56,47,0.1); border-left: 3px solid var(--danger); color: var(--danger); }\n</style>\n</head>\n<body>\n<div class=\"sheet\">\n  <div class=\"letterhead\">\n    <h1>Material Requisition</h1>\n    <span class=\"tag\">Engineering Department</span>\n  </div>\n  <div class=\"form-no\">FORM - MULTI-ITEM - SUBMIT ONCE FOR ALL MATERIALS NEEDED</div>\n\n  <form id=\"reqForm\">\n    <fieldset>\n      <legend>Requester</legend>\n      <div class=\"row3\">\n        <div>\n          <label for=\"name\">Full name</label>\n          <input type=\"text\" id=\"name\" required value=\"Blessing\">\n        </div>\n        <div>\n          <label for=\"reqDate\">Requirement date (applies to all items)</label>\n          <input type=\"date\" id=\"reqDate\" required>\n        </div>\n      </div>\n    </fieldset>\n\n    <fieldset>\n      <legend>Materials Requested</legend>\n      <div id=\"itemsWrap\"></div>\n      <button type=\"button\" class=\"add-item\" id=\"addItemBtn\">+ Add another material</button>\n    </fieldset>\n\n    <div class=\"submit-row\">\n      <span class=\"count-note\" id=\"countNote\">1 item ready to submit</span>\n      <button type=\"submit\" id=\"submitBtn\">Submit requisition</button>\n    </div>\n    <div class=\"status\" id=\"status\"></div>\n  </form>\n</div>\n\n<datalist id=\"skuOptions\"></datalist>\n\n<template id=\"itemTemplate\">\n  <div class=\"item-card\">\n    <span class=\"item-index\"></span>\n    <button type=\"button\" class=\"remove-item\">Remove</button>\n\n    <div class=\"row2\">\n      <div>\n        <label>SKU</label>\n        <input type=\"text\" class=\"f-sku\" required list=\"skuOptions\" placeholder=\"e.g. EP 001 or Others\">\n        <div class=\"sku-feedback\"></div>\n      </div>\n      <div>\n        <label>Purchase category</label>\n        <select class=\"f-category\" required>\n          <option value=\"\">Select...</option>\n          <option>Spare part</option>\n          <option>Fabrication</option>\n          <option>Consumable</option>\n          <option>Tool / Equipment</option>\n          <option>Safety Equipment</option>\n          <option>Building Materials</option>\n          <option>Other</option>\n        </select>\n      </div>\n    </div>\n\n    <div class=\"detail-wrap\" style=\"display:none;\">\n      <label>Description</label>\n      <input type=\"text\" class=\"f-detail\" placeholder=\"Enter the description for new SKU\">\n      <div class=\"readonly-note f-detail-note\"></div>\n    </div>\n\n    <label>Purpose</label>\n    <input type=\"text\" class=\"f-purpose\" required placeholder=\"What is this needed for?\">\n\n    <div class=\"row3\">\n      <div>\n        <label>Quantity</label>\n        <input type=\"number\" class=\"f-qty\" required min=\"1\" step=\"1\" placeholder=\"e.g. 10\">\n      </div>\n      <div>\n        <label>Unit price (optional)</label>\n        <input type=\"number\" class=\"f-price\" min=\"0\" step=\"0.01\" placeholder=\"Leave blank if unknown\">\n      </div>\n    </div>\n  </div>\n</template>\n\n<script>\n  window.SKU_CATALOG_DATA = __SKU_CATALOG_JSON__;\n  window.SKU_BY_KEY_DATA = __SKU_BY_KEY_JSON__;\n</script>\n\n<script>\n  const WEBHOOK_URL = '[URL]';\n\n  const itemsWrap = document.getElementById('itemsWrap');\n  const template = document.getElementById('itemTemplate');\n  const countNote = document.getElementById('countNote');\n  const form = document.getElementById('reqForm');\n  const submitBtn = document.getElementById('submitBtn');\n  const statusBox = document.getElementById('status');\n  const skuOptions = document.getElementById('skuOptions');\n\n  const skuCatalog = window.SKU_CATALOG_DATA || [];\n  const skuByKey = window.SKU_BY_KEY_DATA || {};\n\n  // --- Normalization + fuzzy match helpers ---\n  function normalizeSku(str) {\n    return (str || '')\n      .trim()\n      .toUpperCase()\n      .replace(/[_\\\\-]+/g, ' ')\n      .replace(/\\\\s+/g, ' ');\n  }\n\n  const normalizedBySku = {};\n  Object.keys(skuByKey).forEach(k => {\n    normalizedBySku[normalizeSku(k)] = skuByKey[k];\n  });\n  const normalizedKeyList = Object.keys(normalizedBySku);\n\n  function levenshteinDistance(a, b) {\n    const m = a.length, n = b.length;\n    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\n    for (let i = 0; i <= m; i++) dp[i][0] = i;\n    for (let j = 0; j <= n; j++) dp[0][j] = j;\n    for (let i = 1; i <= m; i++) {\n      for (let j = 1; j <= n; j++) {\n        if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];\n        else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);\n      }\n    }\n    return dp[m][n];\n  }\n\n  function findClosestSku(normInput) {\n    let best = null, bestDist = Infinity;\n    normalizedKeyList.forEach(k => {\n      const d = levenshteinDistance(normInput, k);\n      if (d < bestDist) { bestDist = d; best = k; }\n    });\n    if (best && bestDist > 0 && bestDist <= 2) return best;\n    return null;\n  }\n\n  // --- Populate datalist for typing assistance ---\n  skuCatalog.forEach(r => {\n    const opt = document.createElement('option');\n    opt.value = r.sku;\n    skuOptions.appendChild(opt);\n  });\n  const otherOption = document.createElement('option');\n  otherOption.value = 'Others';\n  skuOptions.appendChild(otherOption);\n\n  function addItem() {\n    const frag = template.content.cloneNode(true);\n    itemsWrap.appendChild(frag);\n    const lastCard = itemsWrap.querySelector('.item-card:last-child');\n    if (lastCard) applySkuBehavior(lastCard);\n    renumber();\n  }\n\n  function renumber() {\n    const cards = itemsWrap.querySelectorAll('.item-card');\n    cards.forEach((card, i) => {\n      card.querySelector('.item-index').textContent = 'ITEM ' + String(i + 1).padStart(2, '0');\n      card.querySelector('.remove-item').style.display = cards.length > 1 ? 'block' : 'none';\n    });\n    countNote.textContent = cards.length + (cards.length === 1 ? ' item ready to submit' : ' items ready to submit');\n  }\n\n  function applySkuBehavior(card) {\n    const skuEl = card.querySelector('.f-sku');\n    const detailWrap = card.querySelector('.detail-wrap');\n    const detailEl = card.querySelector('.f-detail');\n    const detailNote = card.querySelector('.f-detail-note');\n    const feedback = card.querySelector('.sku-feedback');\n\n    function refresh() {\n      const raw = skuEl.value || '';\n      const norm = normalizeSku(raw);\n      feedback.className = 'sku-feedback';\n      feedback.innerHTML = '';\n\n      if (!norm) {\n        detailWrap.style.display = 'none';\n        detailEl.value = '';\n        detailEl.required = false;\n        card.dataset.skuState = 'empty';\n        return;\n      }\n\n      if (norm === 'OTHERS') {\n        detailWrap.style.display = 'block';\n        detailEl.value = '';\n        detailEl.readOnly = false;\n        detailEl.required = true;\n        detailNote.textContent = 'Type a description for this new item.';\n        card.dataset.skuState = 'others';\n        return;\n      }\n\n      if (Object.prototype.hasOwnProperty.call(normalizedBySku, norm)) {\n        detailWrap.style.display = 'block';\n        detailEl.value = normalizedBySku[norm];\n        detailEl.readOnly = true;\n        detailEl.required = false;\n        detailNote.textContent = 'Auto-filled from table_3 Confirm this matches what you need.';\n        card.dataset.skuState = 'known';\n        return;\n      }\n\n      // Unrecognized SKU\n      detailWrap.style.display = 'none';\n      detailEl.value = '';\n      detailEl.required = false;\n      card.dataset.skuState = 'invalid';\n\n      const suggestion = findClosestSku(norm);\n      feedback.classList.add('err');\n      if (suggestion) {\n        const span = document.createElement('span');\n        span.appendChild(document.createTextNode('SKU not found in Plantilla Stock. Did you mean '));\n        const link = document.createElement('span');\n        link.className = 'suggest-link';\n        link.textContent = suggestion;\n        link.addEventListener('click', () => {\n          skuEl.value = suggestion;\n          refresh();\n        });\n        span.appendChild(link);\n        span.appendChild(document.createTextNode('?'));\n        feedback.appendChild(span);\n      } else {\n        feedback.textContent = 'SKU not found in Plantilla Stock. Confirm the SKU name or Type \"Others\" to add a new item.';\n      }\n    }\n\n    skuEl.addEventListener('input', refresh);\n    refresh();\n  }\n\n  itemsWrap.addEventListener('click', (e) => {\n    if (e.target.classList.contains('remove-item')) {\n      e.target.closest('.item-card').remove();\n      renumber();\n    }\n  });\n\n  document.getElementById('addItemBtn').addEventListener('click', addItem);\n  addItem();\n\n  function showStatus(kind, msg) {\n    statusBox.className = 'status show ' + kind;\n    statusBox.textContent = msg;\n  }\n\n  form.addEventListener('submit', async (e) => {\n    e.preventDefault();\n    if (!form.reportValidity()) return;\n\n    statusBox.className = 'status';\n\n    const requirementDate = document.getElementById('reqDate').value;\n    const cards = [...itemsWrap.querySelectorAll('.item-card')];\n\n    for (const card of cards) {\n      const state = card.dataset.skuState;\n\n      if (state === 'invalid' || state === 'empty' || !state) {\n        showStatus('err', 'One or more items has an invalid or missing SKU. Please fix highlighted fields before submitting.');\n        card.querySelector('.f-sku').focus();\n        return;\n      }\n\n      if (state === 'others') {\n        const detail = (card.querySelector('.f-detail').value || '').trim();\n        if (!detail) {\n          showStatus('err', 'Please enter a description for items marked \"Others\".');\n          card.querySelector('.f-detail').focus();\n          return;\n        }\n      }\n    }\n\n    const items = cards.map(card => ({\n      sku: card.querySelector('.f-sku').value.trim(),\n      itemDetail: card.querySelector('.f-detail').value.trim(),\n      category: card.querySelector('.f-category').value,\n      purpose: card.querySelector('.f-purpose').value.trim(),\n      quantity: card.querySelector('.f-qty').value,\n      unitPrice: card.querySelector('.f-price').value\n    }));\n\n    const payload = {\n      name: document.getElementById('name').value.trim(),\n      requirementDate,\n      items\n    };\n\n    submitBtn.disabled = true;\n    submitBtn.textContent = 'Submitting...';\n\n    try {\n      const res = await fetch(WEBHOOK_URL, {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(payload)\n      });\n      if (!res.ok) throw new Error('Server responded ' + res.status);\n\n      const serverMsg = await res.text();\n      showStatus('ok', serverMsg || ('Submitted - ' + items.length + ' item(s) sent for approval.'));\n      form.reset();\n      document.getElementById('name').value = 'Blessing';\n      itemsWrap.innerHTML = '';\n      addItem();\n    } catch (err) {\n      showStatus('err', 'Submission failed - please try again. (' + err.message + ')');\n    } finally {\n      submitBtn.disabled = false;\n      submitBtn.textContent = 'Submit requisition';\n    }\n  });\n</script>\n</body>\n</html>\n`;\n\nconst htmlWithCatalog = html\n  .replace('__SKU_CATALOG_JSON__', JSON.stringify(skuCatalog).replace(/</g, '\\\\u003c'))\n  .replace('__SKU_BY_KEY_JSON__', JSON.stringify(skuByKey).replace(/</g, '\\\\u003c'));\n\nreturn [{ json: { html: htmlWithCatalog } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        1184
+      ],
+      "id": "__NODE_27__",
+      "name": "Render Requisition Form"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        960,
+        1184
+      ],
+      "id": "__NODE_28__",
+      "name": "Respond With Requisition Form HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Prepare Batch Lookup').item.json || {};\nconst batchId = String(ctx.batchId || '').trim();\nconst rows = items || [];\n\nif (!batchId) throw new Error('Missing batchId in lookup context');\nif (!rows.length) throw new Error('No rows found in sheet for batch: ' + batchId);\n\nconst sorted = [...rows].sort((a, b) => Number(a.json.row_number) - Number(b.json.row_number));\n\nconst requesterName = String(ctx.requesterName || sorted[0].json['Requestor'] || '').trim();\nconst requirementDate = String(ctx.requirementDate || sorted[0].json['Requirement Date'] || '').trim();\nconst requesterEmail = '[EMAIL]';\n\nconst batchItems = sorted.map(r => ({\n  rowNumber: Number(r.json.row_number),\n  material: String(r.json['Name of Material / Part'] || ''),\n  detail: String(r.json['Item Detail (Specification & Brand)'] || ''),\n  category: String(r.json['Purchase Category'] || ''),\n  purpose: String(r.json['Purpose'] || ''),\n  qty: String(r.json['Quantity'] || ''),\n  unitPrice: String(r.json['Unit Price'] || '')\n}));\n\nreturn [{\n  json: {\n    batchId,\n    department: 'engineering',\n    requesterName,\n    requesterEmail,\n    requirementDate,\n    items: batchItems,\n    itemsJson: JSON.stringify(batchItems),\n    status: 'open',\n    createdBy: requesterName,\n    reviewUrl: '[URL]' + encodeURIComponent(batchId)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        1440
+      ],
+      "id": "__NODE_29__",
+      "name": "Build Batch Context"
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "=New engineering item(s) awaiting approval",
+        "html": "=<p>Hello Arief,</p>\n<p> The Engineering team submitted a requisition for {{ $('Build Batch Context').item.json.items.length }} item(s). Please click the link below to view and approve the items.</p>\n<p><a href=\"{{ $('Build Batch Context').item.json.reviewUrl }}\" style=\"padding:12px 20px;background:#1c2321;color:#fff;text-decoration:none;border-radius:4px;\">Review & Decide</a></p>",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "[EMAIL], [EMAIL], [EMAIL], [EMAIL], [EMAIL]"
+        }
+      },
+      "id": "__NODE_30__",
+      "name": "Send Batch Approval Email (Eng)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1296,
+        1440
+      ],
+      "webhookId": "__WEBHOOK_8__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Build Batch Context').item.json.items.length + ' item(s) received and queued for approval. Batch: ' + $('Build Batch Context').item.json.batchId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1504,
+        1440
+      ],
+      "id": "__NODE_31__",
+      "name": "Respond Intake Success"
+    },
+    {
+      "parameters": {
+        "content": "## Engineering",
+        "height": 1200,
+        "width": 3060
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        1088
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_32__",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "engineering-decision",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        1952
+      ],
+      "id": "__NODE_33__",
+      "name": "Engineering Decision Webhook.",
+      "webhookId": "__WEBHOOK_9__"
+    },
+    {
+      "parameters": {
+        "jsCode": "const purchaseRows = items;\nconst body = $('Engineering Decision Webhook.').item.json.body || {};\nconst batchRow = $('Get Approval Batch For Decision').item.json || {};\n\nconst batchId = String(body.batchId || '').trim();\nconst decisions = Array.isArray(body.decisions) ? body.decisions : [];\nconst rejectionReason = String(body.rejectionReason || '').trim();\n\nconst requesterEmail = String(batchRow.requester_email || '');\nconst requesterName = String(batchRow.requester_name || '');\nconst batchStatus = String(batchRow.status || '').trim().toLowerCase();\n\nif (!batchId) {\n  throw new Error('Missing batchId');\n}\nif (!batchRow.batch_id) {\n  throw new Error('Approval batch not found');\n}\nif (batchStatus === 'processed') {\n  throw new Error('This batch has already been processed');\n}\nif (decisions.length === 0) {\n  throw new Error('No decisions submitted');\n}\n\nconst hasRejected = decisions.some(\n  d => String(d.decision || '').trim().toLowerCase() === 'rejected'\n);\n\nif (hasRejected && !rejectionReason) {\n  throw new Error('Rejection reason is required when any item is rejected');\n}\n\nlet allowedItems = [];\ntry {\n  allowedItems = typeof batchRow.items_json === 'string'\n    ? JSON.parse(batchRow.items_json)\n    : batchRow.items_json;\n} catch {\n  throw new Error('Stored batch items are invalid');\n}\n\nconst allowedRowNumbers = new Set(\n  (allowedItems || [])\n    .map(it => Number(it.rowNumber))\n    .filter(n => Number.isFinite(n))\n);\n\nconst seen = new Set();\n\nreturn decisions.map((d, index) => {\n  const rowNumber = Number(d.rowNumber);\n  const decision = String(d.decision || '').trim().toLowerCase();\n\n  if (!Number.isFinite(rowNumber)) {\n    throw new Error(`Decision ${index + 1}: invalid row number`);\n  }\n  if (!allowedRowNumbers.has(rowNumber)) {\n    throw new Error(`Decision ${index + 1}: row ${rowNumber} is not part of this batch`);\n  }\n  if (!['approved', 'rejected'].includes(decision)) {\n    throw new Error(`Decision ${index + 1}: invalid decision`);\n  }\n  if (seen.has(rowNumber)) {\n    throw new Error(`Decision ${index + 1}: duplicate row ${rowNumber}`);\n  }\n  seen.add(rowNumber);\n\n  const row = purchaseRows.find(r => Number(r.json.row_number) === rowNumber);\n  if (!row) {\n    throw new Error(`Decision ${index + 1}: purchase row ${rowNumber} not found`);\n  }\n\n  const currentStatus = String(row.json['Management Review'] || '').trim();\n\n  return {\n    json: {\n      batchId,\n      rowNumber,\n      material: String(d.material || ''),\n      detail: String(d.detail || ''),\n      purpose: String(d.purpose || ''),\n      decision,\n      requesterEmail,\n      requesterName,\n      alreadyDecided: currentStatus.length > 0,\n      currentStatus,\n      rejectionReason\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        1936
+      ],
+      "id": "__NODE_34__",
+      "name": "Check Decisions & Filter Already-Decided (Eng)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.alreadyDecided }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        1936
+      ],
+      "id": "__NODE_35__",
+      "name": "Filter Not Yet Decided"
+    },
+    {
+      "parameters": {
+        "jsCode": "const decided = $('Filter Not Yet Decided').all().map(i => i.json);\n\nconst approvedList = decided.filter(d => d.decision === 'approved');\nconst rejectedList = decided.filter(d => d.decision === 'rejected');\n\nfunction renderApprovedList(list) {\n  if (!list.length) return '<p>None</p>';\n  return '<ul>' + list.map(item =>\n    `<li><strong>${item.material || 'Unnamed item'}</strong> \u2014 ${item.detail || 'No description'} \u2014 Purpose: ${item.purpose || 'Not specified'} (Row ${item.rowNumber})</li>`\n  ).join('') + '</ul>';\n}\n\nfunction renderRejectedList(list) {\n  if (!list.length) return '<p>None</p>';\n  return '<ul>' + list.map(item =>\n    `<li><strong>${item.material || 'Unnamed item'}</strong> \u2014 ${item.detail || 'No description'} \u2014 Reason: ${item.rejectionReason || 'Not provided'} (Row ${item.rowNumber})</li>`\n  ).join('') + '</ul>';\n}\n\nreturn [{\n  json: {\n    batchId: decided[0]?.batchId || '',\n    approvedList,\n    rejectedList,\n    requesterEmail: decided[0]?.requesterEmail || '',\n    requesterName: decided[0]?.requesterName || '',\n    approvedHtml: renderApprovedList(approvedList),\n    rejectedHtml: renderRejectedList(rejectedList)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        1936
+      ],
+      "id": "__NODE_36__",
+      "name": "Aggregate Batch Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.approvedList.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1584,
+        1936
+      ],
+      "id": "__NODE_37__",
+      "name": "If Any Approved"
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "[EMAIL]",
+        "subject": "=Engineering approvals completed: {{ $json.approvedList.length }} approved",
+        "html": "=<p>Hello,</p>\n<p>The following engineering item(s) have been approved and can move forward for procurement.</p>\n{{ $json.approvedHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "[EMAIL], [EMAIL], [EMAIL]"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1840,
+        1776
+      ],
+      "id": "__NODE_38__",
+      "name": "Notify Procurement (Batch Approved Items)",
+      "webhookId": "__WEBHOOK_10__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "[EMAIL]",
+        "toEmail": "={{ $('Aggregate Batch Results').item.json.requesterEmail }}",
+        "subject": "=Engineering requisition update: {{ $json.rejectedList.length }} rejected",
+        "html": "=<p>Hello {{ $json.requesterName }},</p>\n<p>The following engineering item(s) were rejected:</p>\n{{ $json.rejectedHtml }}",
+        "options": {
+          "appendAttribution": false,
+          "ccEmail": "[EMAIL], [EMAIL], [EMAIL]"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2016,
+        2064
+      ],
+      "id": "__NODE_39__",
+      "name": "Notify Requester (Batch Rejections)",
+      "webhookId": "__WEBHOOK_11__",
+      "credentials": {
+        "smtp": {
+          "id": "__SMTP_CRED_ID",
+          "name": "SMTP Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "create table if not exists OKL_procurement_approval_batches (\n    id bigserial primary key,\n    batch_id text not null unique,\n    department text not null,\n    requester_name text not null,\n    requester_email text,\n    requirement_date date not null,\n    items_json jsonb not null,\n    status text not null default 'open',\n    created_at timestamptz not null default now(),\n    processed_at timestamptz,\n    created_by text,\n    remarks text,\n    decisions_json jsonb,\n    decision_at timestamptz,\n    constraint OKL_procurement_approval_batches_status_chk\n        check (status in ('open', 'processed', 'cancelled'))\n);\n\ncreate index if not exists OKL_procurement_approval_batches_department_status_idx\n    on OKL_procurement_approval_batches (department, status);\n\ncreate index if not exists OKL_procurement_approval_batches_created_at_idx\n    on OKL_procurement_approval_batches (created_at desc);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -336,
+        1520
+      ],
+      "id": "__NODE_40__",
+      "name": "Helper Table structure",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select\n  batch_id,\n  department,\n  requester_name,\n  requester_email,\n  requirement_date,\n  items_json,\n  status,\n  created_at,\n  processed_at\nfrom table_4\ncolumn_1 $1\nlimit 1;",
+        "options": {
+          "queryReplacement": "={{ $json.query.batchId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        96,
+        1728
+      ],
+      "id": "__NODE_41__",
+      "name": "Get Approval Batch",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into table_4\n(batch_id, department, requester_name, requester_email, requirement_date, items_json, status, created_by)\nvalues ($1, $2, $3, $4, $5, $6::jsonb, 'open', $7)\nreturning batch_id;",
+        "options": {
+          "queryReplacement": "={{$json.batchId}}, {{$json.department}}, {{$json.requesterName}}, {{$json.requesterEmail}}, {{$json.requirementDate}}, {{$json.itemsJson}}, {{$json.createdBy}}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        1440
+      ],
+      "id": "__NODE_42__",
+      "name": "Insert Approval Batch",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = items[0]?.json || {};\nconst batchId = String(\n$('Engineering Checklist Webhook').item.json.query?.batchId ||\nrow.batch_id ||\n''\n).trim();\n\nif (!batchId) {\nreturn [{ json: { error: 'Approval link is invalid or missing batch ID.' } }];\n}\n\nif (!row.batch_id) {\nreturn [{ json: { error: 'Approval batch was not found. Please request a new approval link.' } }];\n}\n\nif (String(row.status || '').trim().toLowerCase() === 'processed') {\nconst processedAt = row.processed_at\n? new Date(row.processed_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })\n: 'an earlier time';\nreturn [{ json: { error: 'This approval batch was already processed on ' + processedAt + '.' } }];\n}\n\nlet parsedItems = [];\ntry {\nparsedItems = typeof row.items_json === 'string' ? JSON.parse(row.items_json) : row.items_json;\n} catch {\nreturn [{ json: { error: 'Stored batch data is invalid. Contact admin.' } }];\n}\n\nif (!Array.isArray(parsedItems) || parsedItems.length === 0) {\nreturn [{ json: { error: 'No items were found in this approval batch.' } }];\n}\n\nreturn [{\njson: {\nbatchId: row.batch_id,\ndepartment: row.department,\nrequesterName: String(row.requester_name || ''),\nrequesterEmail: String(row.requester_email || ''),\nrequirementDate: String(row.requirement_date || ''),\nitems: parsedItems\n}\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        1728
+      ],
+      "id": "__NODE_43__",
+      "name": "Decode Batch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select\n  batch_id,\n  department,\n  requester_name,\n  requester_email,\n  requirement_date,\n  items_json,\n  status,\n  processed_at\nfrom table_4\ncolumn_1 $1\nlimit 1;",
+        "options": {
+          "queryReplacement": "={{ $json.body.batchId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        80,
+        1952
+      ],
+      "id": "__NODE_44__",
+      "name": "Get Approval Batch For Decision",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.rejectedList.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1808,
+        2080
+      ],
+      "id": "__NODE_45__",
+      "name": "If Any Rejected"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update table_4\ncolumn_2 'processed',\n  processed_at = now(),\n  decision_at = now(),\n  decisions_json = $2::jsonb\ncolumn_1 $1\n  column_2 'open';",
+        "options": {
+          "queryReplacement": "={{ $('Aggregate Batch Results').item.json.batchId }}, {{ JSON.stringify($('Aggregate Batch Results').item.json) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2592,
+        1904
+      ],
+      "id": "__NODE_46__",
+      "name": "Update table_5 table",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2208,
+        1776
+      ],
+      "id": "__NODE_47__",
+      "name": "Approved Branch Done"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2224,
+        2096
+      ],
+      "id": "__NODE_48__",
+      "name": "Rejected Branch Done"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2416,
+        1904
+      ],
+      "id": "__NODE_49__",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ 'This approval batch has already been processed on ' + ( $('Get Approval Batch For Decision').item.json.processed_at ? new Date($('Get Approval Batch For Decision').item.json.processed_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }) : 'an earlier time' ) + '. No further action was taken.' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        496,
+        2144
+      ],
+      "id": "__NODE_50__",
+      "name": "Already processed response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "REDACTED_OPAQUE_TOKEN",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "open",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        288,
+        1952
+      ],
+      "id": "__NODE_51__",
+      "name": "Check if processed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select column_name, data_type\nfrom table_6\ncolumn_3 'public'\n  column_4 '[ID]'\n  and column_name in ('decisions_json', 'decision_at');",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -352,
+        1728
+      ],
+      "id": "__NODE_52__",
+      "name": "execute whatever",
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CRED_ID",
+          "name": "PostgreSQL Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const first = $('Split Items (Eng Intake)').all()[0]?.json || {};\nif (!first.batchId) throw new Error('Missing batchId from table_7 split');\n\nreturn [{\n  json: {\n    batchId: String(first.batchId),\n    requesterName: String(first['Requestor'] || ''),\n    requirementDate: String(first['Requirement Date'] || '')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        1440
+      ],
+      "id": "__NODE_53__",
+      "name": "Prepare Batch Lookup"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System Engineering",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Remarks",
+              "lookupValue": "={{$json.batchId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        1440
+      ],
+      "id": "__NODE_54__",
+      "name": "Get Rows By BatchId",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Build Batch Context').item.json.items || [];\n\nreturn items\n  .filter(i => Number.isFinite(Number(i.rowNumber)))\n  .map(i => ({\n    json: {\n      row_number: Number(i.rowNumber),\n      Remarks: ''\n    }\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        1664
+      ],
+      "id": "__NODE_55__",
+      "name": "Prepare Remarks Cleanup Rows"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Procurement Tracking System Engineering",
+          "cachedResultUrl": "[URL]"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2098815470,
+          "mode": "list",
+          "cachedResultName": "Purchase",
+          "cachedResultUrl": "[URL]"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Remarks": "={{ $json.Remarks }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Request Date",
+              "displayName": "Request Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requestor",
+              "displayName": "Requestor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Name of Material / Part",
+              "displayName": "Name of Material / Part",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Item Detail (Specification & Brand)",
+              "displayName": "Item Detail (Specification & Brand)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purchase Category",
+              "displayName": "Purchase Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Purpose",
+              "displayName": "Purpose",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Requirement Date",
+              "displayName": "Requirement Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Unit Price",
+              "displayName": "Unit Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Total Value",
+              "displayName": "Total Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review",
+              "displayName": "Management Review",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Remark",
+              "displayName": "Management Remark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PO Number",
+              "displayName": "PO Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Term Of Payment",
+              "displayName": "Term Of Payment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Management Review (ODL)",
+              "displayName": "Management Review (ODL)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "RFP Number",
+              "displayName": "RFP Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 1 Amount",
+              "displayName": "Payment 1 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment 2 Amount",
+              "displayName": "Payment 2 Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Balance",
+              "displayName": "Balance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Vendor Delivery",
+              "displayName": "Vendor Delivery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Request Status",
+              "displayName": "Request Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Department Receival Status",
+              "displayName": "Department Receival Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Remarks",
+              "displayName": "Remarks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1520,
+        1664
+      ],
+      "id": "__NODE_56__",
+      "name": "Clear Batch Marker Remarks",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Approval Webhook').item.json.query.decision === 'approved' ? 'Request approved. The procurement team has been notified.' : 'Request rejected. The requester has been notified.' }}",
+        "options": {}
+      },
+      "id": "__NODE_57__",
+      "name": "Respond Success1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2224,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Production\n",
+        "height": 1072,
+        "width": 2576
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "__NODE_58__",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = items.map(i => i.json || {});\n\nconst catalog = rows\n  .map(r => ({\n    sku: String(r.SKU || '').trim(),\n    description: String(r.DESCRIPTION || '').trim()\n  }))\n  .filter(x => x.sku.length > 0 && x.description.length > 0);\n\nconst bySku = {};\nfor (const row of catalog) {\n  bySku[row.sku.toUpperCase()] = row.description;\n}\n\nreturn [{\n  json: {\n    catalog,\n    bySku\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        1184
+      ],
+      "id": "__NODE_59__",
+      "name": "Normalize SKU Catalog"
+    },
+    {
+      "parameters": {
+        "authentication": "REDACTED",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "REDACTED_OPAQUE_TOKEN",
+          "mode": "list",
+          "cachedResultName": "Inventory Management 2026.xlsx",
+          "cachedResultUrl": "[URL]"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        96,
+        1184
+      ],
+      "id": "__NODE_60__",
+      "name": "Download SKU Workbook",
+      "credentials": {
+        "googleApi": {
+          "id": "__GOOGLE_CRED_ID",
+          "name": "Google API Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true,
+          "range": "A3:B5000",
+          "sheetName": "Plantilla stock"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        1184
+      ],
+      "id": "__NODE_61__",
+      "name": "Parse SKU Workbook"
+    }
+  ],
+  "pinData": {
+    "Engineering Intake Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "orangegroupsai.online",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+            "content-length": "310",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "application/json",
+            "origin": "null",
+            "priority": "u=1, i",
+            "sec-ch-ua": "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "105.127.12.170",
+            "x-forwarded-host": "orangegroupsai.online",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "e10704efd721",
+            "x-real-ip": "105.127.12.170"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "name": "Blessing",
+            "requirementDate": "2026-07-31",
+            "items": [
+              {
+                "sku": "EP 001",
+                "itemDetail": "Digital meter relay",
+                "category": "Spare part",
+                "purpose": "to sleep",
+                "quantity": "5",
+                "unitPrice": ""
+              },
+              {
+                "sku": "AP 009",
+                "itemDetail": "Open push button",
+                "category": "Spare part",
+                "purpose": "to wake",
+                "quantity": "2",
+                "unitPrice": ""
+              }
+            ]
+          },
+          "webhookUrl": "REDACTED",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Engineering Decision Webhook.": [
+      {
+        "json": {
+          "headers": {
+            "host": "orangegroupsai.online",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+            "content-length": "496",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "application/json",
+            "origin": "null",
+            "priority": "u=1, i",
+            "sec-ch-ua": "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "105.127.12.170",
+            "x-forwarded-host": "orangegroupsai.online",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "e10704efd721",
+            "x-real-ip": "105.127.12.170"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "batchId": "ENG-20260725-141646-446-TP5FCQ",
+            "requesterEmail": "[EMAIL]",
+            "requesterName": "Blessing",
+            "rejectionReason": "Out of Budget",
+            "decisions": [
+              {
+                "rowNumber": 75,
+                "material": "EP 010",
+                "detail": "Relay 240VAC  MK2P-1",
+                "purpose": "kk",
+                "qty": "2",
+                "decision": "approved"
+              },
+              {
+                "rowNumber": 76,
+                "material": "EP 016",
+                "detail": "Relay socket PYF08A",
+                "purpose": "kk",
+                "qty": "3",
+                "decision": "rejected"
+              },
+              {
+                "rowNumber": 77,
+                "material": "others",
+                "detail": "build",
+                "purpose": "build",
+                "qty": "3",
+                "decision": "rejected"
+              }
+            ]
+          },
+          "webhookUrl": "REDACTED",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Trigger Main Form": {
+      "main": [
+        [
+          {
+            "node": "Get Row Number (prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "If Valid Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Valid Decision": {
+      "main": [
+        [
+          {
+            "node": "Decode Decision Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Approved": {
+      "main": [
+        [
+          {
+            "node": "Notify Next Person (Approved)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Requester (Rejected)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Next Person (Approved)": {
+      "main": [
+        [
+          {
+            "node": "Respond Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Requester (Rejected)": {
+      "main": [
+        [
+          {
+            "node": "Respond Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields (prod)": {
+      "main": [
+        [
+          {
+            "node": "Send Approval Email (prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Row Number (prod)": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields (prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Decision Link": {
+      "main": [
+        [
+          {
+            "node": "Get All Purchase Rows (Prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet (eng)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Batch Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet (prod)": {
+      "main": [
+        [
+          {
+            "node": "If Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Purchase Rows (Eng)": {
+      "main": [
+        [
+          {
+            "node": "Check Decisions & Filter Already-Decided (Eng)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Purchase Rows (Prod)": {
+      "main": [
+        [
+          {
+            "node": "Check If Decided (Prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Decided (Prod)": {
+      "main": [
+        [
+          {
+            "node": "Already Decided? (Prod)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Decided? (Prod)": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet (prod)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engineering Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Items (Eng Intake)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Items (Eng Intake)": {
+      "main": [
+        [
+          {
+            "node": "Append to Purchase (Eng)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engineering Checklist Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Approval Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Checklist Page": {
+      "main": [
+        [
+          {
+            "node": "Respond With Checklist HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engineering Requisition Form Webhook": {
+      "main": [
+        [
+          {
+            "node": "Download SKU Workbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Requisition Form": {
+      "main": [
+        [
+          {
+            "node": "Respond With Requisition Form HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Purchase (Eng)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Batch Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Batch Context": {
+      "main": [
+        [
+          {
+            "node": "Insert Approval Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Batch Approval Email (Eng)": {
+      "main": [
+        [
+          {
+            "node": "Respond Intake Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Engineering Decision Webhook.": {
+      "main": [
+        [
+          {
+            "node": "Get Approval Batch For Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Decisions & Filter Already-Decided (Eng)": {
+      "main": [
+        [
+          {
+            "node": "Filter Not Yet Decided",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Not Yet Decided": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet (eng)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Aggregate Batch Results": {
+      "main": [
+        [
+          {
+            "node": "If Any Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Any Approved": {
+      "main": [
+        [
+          {
+            "node": "If Any Rejected",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Procurement (Batch Approved Items)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Any Rejected",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Approved Branch Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approval Batch": {
+      "main": [
+        [
+          {
+            "node": "Decode Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Approval Batch": {
+      "main": [
+        [
+          {
+            "node": "Send Batch Approval Email (Eng)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Remarks Cleanup Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Batch": {
+      "main": [
+        [
+          {
+            "node": "Render Checklist Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approval Batch For Decision": {
+      "main": [
+        [
+          {
+            "node": "Check if processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Any Rejected": {
+      "main": [
+        [
+          {
+            "node": "Notify Requester (Batch Rejections)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rejected Branch Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Procurement (Batch Approved Items)": {
+      "main": [
+        [
+          {
+            "node": "Approved Branch Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Requester (Batch Rejections)": {
+      "main": [
+        [
+          {
+            "node": "Rejected Branch Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update batch table": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved Branch Done": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected Branch Done": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Update batch table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if processed": {
+      "main": [
+        [
+          {
+            "node": "Get All Purchase Rows (Eng)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already processed response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Batch Lookup": {
+      "main": [
+        [
+          {
+            "node": "Get Rows By BatchId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Rows By BatchId": {
+      "main": [
+        [
+          {
+            "node": "Build Batch Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Remarks Cleanup Rows": {
+      "main": [
+        [
+          {
+            "node": "Clear Batch Marker Remarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SKU Catalog": {
+      "main": [
+        [
+          {
+            "node": "Render Requisition Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download SKU Workbook": {
+      "main": [
+        [
+          {
+            "node": "Parse SKU Workbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SKU Workbook": {
+      "main": [
+        [
+          {
+            "node": "Normalize SKU Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "__VERSION_ID__",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "__INSTANCE_ID__"
+  },
+  "id": "__WORKFLOW_ID__",
+  "_sanitization_metadata": {
+    "sanitized_at": "2026-07-25T19:12:18.200835+00:00",
+    "original_name": "OKL Procurement Approval Flow",
+    "note": "Sensitive data replaced with placeholders.",
+    "tables_renamed": {
+      "the": "table_1",
+      "row": "table_2",
+      "catalog.": "table_3",
+      "OKL_procurement_approval_batches": "table_4",
+      "batch": "table_5",
+      "information_schema.columns": "table_6",
+      "intake": "table_7"
+    },
+    "columns_renamed": {
+      "batch_id": "column_1",
+      "status": "column_2",
+      "table_schema": "column_3",
+      "table_name": "column_4"
+    }
+  }
+}

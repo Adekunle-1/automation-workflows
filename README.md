@@ -4,19 +4,17 @@ This README is an overview of what is currently in this repository.
 
 ## Top-Level Workflows
 
-| Workflow File                                             | Brief Description                                                                                                                 |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Favour_-_Digital_Trade_Promotion_Agent_sanitized.json     | Scheduled digital trade promotion agent with file upload intake (for RAG), MinIO storage flow, and PostgreSQL-backed processing. |
-| HR_-_MentorMe_sanitized.json                              | Large mentorship lifecycle workflow handling pairing cycles, token generation, and recurring mentor/mentee email sequences.       |
-| Leave_Management_System_sanitized.json                    | Webhook-driven leave request and approval workflow with employee-facing forms and email notifications.                            |
-| Muna_-_TreasAlert_Agent_sanitized.json                    | Treasury alert workflow combining scheduled checks, transaction validation logic, and reporting actions (sheet/PDF/alerts).       |
-| Orange_Group_-_Task_Management_Agent_sanitized.json       | Task operations workflow with webhook update endpoints, database operations, AI-assisted task handling, and status notifications. |
-| Winnifred_-_Stock_Auditor_Agent_sanitized.json            | Stock audit and image-based verification workflow with email/webhook triggers and exception routing.                              |
-| Winnifred_-_Transaction_verification_Agent_sanitized.json | Transaction verification flow for payload parsing, sheet logging, and email-based review/confirmation steps.                      |
+| Workflow File                  | Purpose                                                                                                                                                                                                               | Business Impact                                                                                                                                                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DigitalTradeBot.json`       | WhatsApp customer engagement agent. Ingests documents via webhook, generates vector embeddings for semantic search, maintains conversation history and customer profiles in PostgreSQL.                               | Enables conversational commerce on WhatsApp. Customers discover products and promo codes through natural language search against uploaded documents (catalogs, product sheets), reducing friction compared to manual browsing.  |
+| `MentorshipProgram.json`     | Quarterly mentorship lifecycle automation. Tracks active mentor-mentee pairs through checkpoints, generates goal-submission tokens, auto-escalates non-responsive pairs at grace, reminder, and escalation intervals. | Ensures consistent engagement in mentorship programs; prevents ghosting; automatic escalation reduces manual follow-up burden.                                                                                                   |
+| `LeaveApprovalEngine.json`   | 3-tier leave request workflow: employee submission → manager approval → HR validation with balance deduction. Each stage triggers notifications and state updates.                                                  | Centralizes leave requests, prevents over-allocation, creates audit trail, reduces spreadsheet chaos and manual balance tracking.                                                                                                |
+| `ProcurementVisibility.json` | Procurement request intake with HTML-based approval decision links. Captures requirement dates, quantity, unit price, and purpose. Routes approved requests forward, rejected requests back to requester.             | Creates visibility into procurement lead times; requirement dates enable capacity planning; decision context reduces approval re-work.                                                                                           |
+| `TaskUpdateEngine.json`      | Email-driven task management via authenticated HTML forms. Auto-generates 30-day tokens per task, prioritizes by urgency (overdue → due-soon → upcoming), sends periodic digests scored by deadline proximity.      | Reduces status-update friction (no login required), concentrates urgent tasks in visibility, prevents deadline slippage via automated priority scoring.                                                                          |
 
 ## MySquad Workflows Overview
 
-MySquad workflows are grouped under the MySquad_workflows folder by role.
+MySquad is an SMS/WhatsApp-first customer engagement platform for SMEs. It orchestrates multi-channel conversations, AI-powered content generation, automated customer lifecycle workflows, and real-time notification delivery. MySquad workflows are grouped under the MySquad_workflows folder by role.
 
 | Group                     | Count | What It Covers                                                                                            |
 | ------------------------- | ----: | --------------------------------------------------------------------------------------------------------- |
@@ -28,5 +26,4 @@ MySquad workflows are grouped under the MySquad_workflows folder by role.
 
 ## Notes
 
-- Personal Projects remains ignored by git.
 - Workflow files are sanitized outputs intended for safe sharing/import.
